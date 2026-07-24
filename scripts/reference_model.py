@@ -226,13 +226,12 @@ if (__name__ == "__main__"):
     assert round_exact_to_bf16(0, min_normal) == 0x0080               # Min normal
     assert round_exact_to_bf16(0, min_normal / Fraction(2)) == 0x0000 # Below normal: FTZ
 
-    """
     for u in range(0xFFFF + 1):
         sign, exponent, fraction = decode_bits(u)
         if ((exponent == 0x00) or (exponent == 0xFF)):
             continue
         assert round_exact_to_bf16(sign, abs(bf16_to_exact(u))) == u
-    """
+    
     # -------------------------------------------------------------------
     # FMA reference test cases
     # -------------------------------------------------------------------

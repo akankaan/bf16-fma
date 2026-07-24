@@ -1,0 +1,36 @@
+# Vector generation for the validation of the Bfloat16 FMU (Fused Multiply Unit)
+
+# Author: Kaan Akan
+# Date  : July 24, 2026
+
+import random
+import reference_model
+
+# Generate random vector that doesn't have special flags
+def random_normal_bf16_generation(rng):
+    return (rng.randint(0,1) << 15) | (rng.randint(1,254) << 7 ) | (rng.randint(0,127))
+
+# Write the expected value of given vectors after operation
+def write_vector_fma_results(path, vectors):
+    with open(path, "w") as f:
+        for a, b, c in vectors:
+
+            expected_result = reference_model.fma_bf16_ref(a, b, c)
+
+            # Writes input floats and their corresponding expected value
+            f.write(f"{a:04x} {b:04x} {c:04x} {expected_result:04x}\n")
+    print(f"{path}: {len(vectors)} vectors")
+
+rng = random.Random(1) # Using seed for reproducibility
+
+# Add vectors to random vector list
+vector_generation_amount = 2000
+rand_vectors = []
+
+for i in range(0, vector_generation_amount ):
+    rand_vectors.append((random_normal_bf16_generation(rng), 
+                         random_normal_bf16_generation(rng), 
+                         random_normal_bf16_generation(rng)))
+
+# Calculate the result vectors and write to text file
+write_vector_fma_results("tb/vec_random.txt", rand_vectors)
