@@ -1,4 +1,4 @@
-# Vector generation for the validation of the Bfloat16 FMU (Fused Multiply Unit)
+# Vector generation for the validation of the Bfloat16 FMA (Fused Multiply Add) unit
 
 # Author: Kaan Akan
 # Date  : July 24, 2026
@@ -11,7 +11,7 @@ def random_normal_bf16_generation(rng):
     return (rng.randint(0,1) << 15) | (rng.randint(1,254) << 7 ) | (rng.randint(0,127))
 
 # Write the expected value of given vectors after operation
-def write_vector_fma_results(path, vectors):
+def write_vector_results(path, vectors):
     with open(path, "w") as f:
         for a, b, c in vectors:
 
@@ -42,5 +42,5 @@ for a in SPECIAL_VALUES:
             special_vectors.append((a, b, c))
 
 # Calculate the result vectors and write to text file
-write_vector_fma_results("tb/vec_random.txt",  rand_vectors)
-write_vector_fma_results("tb/vec_special.txt", special_vectors)
+write_vector_results("tb/vec_random.txt",  rand_vectors)
+write_vector_results("tb/vec_special.txt", special_vectors)

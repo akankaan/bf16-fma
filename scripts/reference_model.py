@@ -1,4 +1,4 @@
-# Python reference model for the validation of the Bfloat16 FMU (Fused Multiply Unit)
+# Python reference model for the validation of the Bfloat16 FMA (Fused Multiply Add) unit
 
 # Author: Kaan Akan
 # Date  : July 20, 2026
