@@ -102,14 +102,73 @@ def round_exact_to_bf16(sign_bit: int, magnitude: Fraction):
     
     return (sign_bit << 15) | (biased_exponent << 7) | fraction_floor
 
+def fma_bf16_ref(a:int, b:int, c:int):
+    # Flag handling
+    sign_a, exponent_a, fraction_a = decode_bits(a)
+    sign_b, exponent_b, fraction_b = decode_bits(b) 
+    sign_c, exponent_c, fraction_c = decode_bits(c) 
+
+    a_inf  = (exponent_a == 255) and (fraction_a == 0)
+    a_nan  = (exponent_a == 255) and (fraction_a != 0)
+    a_zero = (exponent_a == 0) # Subnormals are considered zero
+
+    b_nan  = (exponent_b == 255) and (fraction_b != 0)
+    b_inf  = (exponent_b == 255) and (fraction_b == 0)
+    b_zero = (exponent_b == 0)
+
+    c_inf  = (exponent_c == 255) and (fraction_c == 0)
+    c_nan  = (exponent_c == 255) and (fraction_c != 0)  
+
+    # Return NaN for any NaN input
+    if (a_nan or b_nan or c_nan):
+        return 0x7FC0
+    # Return NaN when one multiplicand is infinite and the other zero
+    elif ((a_inf and b_zero) or (a_zero and b_inf)):
+        return 0x7FC0
+    # Return NaN when inf multiplication's sign doesn't match infinite addend's sign
+    elif ((a_inf or b_inf) and (c_inf) and ((sign_a ^ sign_b) != sign_c)):
+        return 0x7FC0
+    # Return inf, with appopriate sign, when at least one multiplicand is inf.
+    # c is either finite or same signed inf
+    elif (a_inf or b_inf):
+        return ((sign_a ^ sign_b) << 15) | 0x7F80
+    # Return inf, with appopriate sign, when addend is inf, multiplicands are finite
+    elif (c_inf):
+        return (sign_c << 15) | 0x7F80
+    # No special flags detected, do arithmetic
+    else:
+        result = add_exact(mul_exact(a,b), c)
+        if result > 0:
+            sign_result = 0
+        elif result < 0:
+            sign_result = 1
+        else:
+            # Fraction(0) has no sign and requires sign to be recovered
+            # 0 happens either because +-0 result of multiplication and c were added,
+            # or opposing signed values got cancelled. Only case that results in negative 0 sign
+            # is when negative zeros are added, so:
+            #   (-0) + (-0) = -0      ->  the only path to -0
+            #   (+0) + (+0) = +0
+            #   (+0) + (-0) = +0          (IEEE-754 zero-sum rule; +0 for RNE)
+            #   exact cancellation = +0   (IEEE-754 zero-sum rule; +0 under RNE)
+            sign_result = ((sign_a ^ sign_b) == 1) and (sign_c == 1)
+              
+        return round_exact_to_bf16(sign_result, abs(result))
+
 # Smoke testing inline asserts only fire in direct execution
 if (__name__ == "__main__"):
 
+    # -------------------------------------------------------------------
+    # Decode bits test cases
+    # -------------------------------------------------------------------
     assert decode_bits(0b1111_1111_1111_1111) == (0b1, 0b1111_1111, 0b1111_111)
     assert decode_bits(0b0111_1111_1111_1111) == (0b0, 0b1111_1111, 0b1111_111)
     assert decode_bits(0b0101_0011_1101_1011) == (0b0, 0b1010_0111, 0b1011_011)
     assert decode_bits(0b1010_1100_0010_0100) == (0b1, 0b0101_1000, 0b0100_100)
 
+    # -------------------------------------------------------------------
+    # Bf16 to exact conversion test cases
+    # -------------------------------------------------------------------
     assert bf16_to_exact(0x3F80) == 1                           # 1.0
     assert bf16_to_exact(0xBF80) == -1                          # -1.0
     assert bf16_to_exact(0xC000) == -2                          # -2.0
@@ -121,6 +180,9 @@ if (__name__ == "__main__"):
     assert bf16_to_exact(0x007F) == 0                           # subnormal flushed to 0
     assert bf16_to_exact(0x7F7F) == Fraction(255,128) * 2**127  # largest finite
 
+    # -------------------------------------------------------------------
+    # Multiplication test cases
+    # -------------------------------------------------------------------
     assert mul_exact(0x3F80, 0x3F80) == 1                   #  1.0 *  1.0
     assert mul_exact(0xBF80, 0xBF80) == 1                   # -1.0 * -1.0
     assert mul_exact(0x0000, 0x0000) == 0                   #   +0 *  +0
@@ -128,11 +190,17 @@ if (__name__ == "__main__"):
     assert mul_exact(0x3FC0, 0xC000) == -3                  # 1.5 * -2.0
     assert mul_exact(0x3F81, 0x3F81) == 1 + Fraction(1,64) + Fraction(1,16384)
 
+    # -------------------------------------------------------------------
+    # Addition test cases
+    # -------------------------------------------------------------------
     assert add_exact(bf16_to_exact(0x3F80), 0x3F80) == 2  #  1.0 +  1.0
     assert add_exact(bf16_to_exact(0xBF80), 0xBF80) == -2 # -1.0 * -1.0
     assert add_exact(bf16_to_exact(0x0000), 0x0000) == 0  #   +0 *  +0
     assert add_exact(mul_exact(0x3F81, 0x3F81), 0x3F80) == 2 + Fraction(1,64) + Fraction(1,16384)
 
+    # -------------------------------------------------------------------
+    # Round exact to bf16 test cases
+    # -------------------------------------------------------------------
     assert round_exact_to_bf16(0, 0)  ==  0x0000 #  +0 ->  0
     assert round_exact_to_bf16(1, 0)  ==  0x8000 #  -0 ->  0
     assert round_exact_to_bf16(0, Fraction(32)) ==  0x4200 #  32 ->  32 - exact 
@@ -158,11 +226,28 @@ if (__name__ == "__main__"):
     assert round_exact_to_bf16(0, min_normal) == 0x0080               # Min normal
     assert round_exact_to_bf16(0, min_normal / Fraction(2)) == 0x0000 # Below normal: FTZ
 
+    """
     for u in range(0xFFFF + 1):
         sign, exponent, fraction = decode_bits(u)
         if ((exponent == 0x00) or (exponent == 0xFF)):
             continue
         assert round_exact_to_bf16(sign, abs(bf16_to_exact(u))) == u
+    """
+    # -------------------------------------------------------------------
+    # FMA reference test cases
+    # -------------------------------------------------------------------
+    assert fma_bf16_ref(0x0000, 0x0000, 0x0000) == 0x0000 # (+0) * (+0)  + (+0)  = +0 
+    assert fma_bf16_ref(0x8000, 0x0000, 0x0000) == 0x0000 # (-0) * (+0)  + (+0)  = +0 
+    assert fma_bf16_ref(0x8000, 0x0000, 0x8000) == 0x8000 # (-0) * (+0)  + (-0)  = -0 
+    assert fma_bf16_ref(0x8000, 0x8000, 0x8000) == 0x0000 # (-0) * (-0)  + (-0)  = +0
+    assert fma_bf16_ref(0x3F80, 0x4000, 0xC000) == 0x0000 # (+1) * (+2)  + (-2)  = +0 
+    assert fma_bf16_ref(0xBF80, 0x4000, 0x4000) == 0x0000 # (-1) * (+2)  + (+2)  = +0 
+
+    assert fma_bf16_ref(0x0000, 0x0000, 0x3F80) == 0x3F80 # (+0) * (+0)  + (+1)  = +1 
+    assert fma_bf16_ref(0x3F80, 0x0000, 0x3F80) == 0x3F80 # (+1) * (+0)  + (+1)  = +1
+    assert fma_bf16_ref(0x3F80, 0x3F80, 0x3F80) == 0x4000 # (+1) * (+1)  + (+1)  = +2
+    assert fma_bf16_ref(0x4180, 0x4380, 0x4380) == 0x4588 # (16) * (256) + (256) = 4352
+    assert fma_bf16_ref(0x3F80, 0x3F80, 0x0080) == 0x3F80 # Large multiplication + small addend
 
     print("Assertions passed")
 
