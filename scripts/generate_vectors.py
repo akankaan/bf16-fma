@@ -23,8 +23,8 @@ def write_vector_fma_results(path, vectors):
 
 rng = random.Random(1) # Using seed for reproducibility
 
-# Add vectors to random vector list
-vector_generation_amount = 2000
+# Add random vectors to random vector list
+vector_generation_amount = 10000
 rand_vectors = []
 
 for i in range(0, vector_generation_amount ):
@@ -32,5 +32,15 @@ for i in range(0, vector_generation_amount ):
                          random_normal_bf16_generation(rng), 
                          random_normal_bf16_generation(rng)))
 
+# Add special vectors to random vector list
+SPECIAL_VALUES = [0x7FC0, 0x7F80, 0xFF80, 0x0000, 0x8000, 0x0080, 0x7F7F, 0x3FC0]
+special_vectors = []
+
+for a in SPECIAL_VALUES:
+    for b in SPECIAL_VALUES:
+        for c in SPECIAL_VALUES:
+            special_vectors.append((a, b, c))
+
 # Calculate the result vectors and write to text file
-write_vector_fma_results("tb/vec_random.txt", rand_vectors)
+write_vector_fma_results("tb/vec_random.txt",  rand_vectors)
+write_vector_fma_results("tb/vec_special.txt", special_vectors)
