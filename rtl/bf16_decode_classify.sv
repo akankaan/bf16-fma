@@ -38,19 +38,18 @@ module bf16_decode_classify
 
     // Decode sign, exponent, and significand fields according to 
     // following format: {sign[15],exponent[14:7], significand[6:0]}
-    always_comb begin
-        a_sign = a[15];
-        b_sign = b[15];
-        c_sign = c[15];
+    assign a_sign = a[15];
+    assign b_sign = b[15];
+    assign c_sign = c[15];
 
-        a_exponent = a[14:7];
-        b_exponent = b[14:7];
-        c_exponent = c[14:7];
+    assign a_exponent = a[14:7];
+    assign b_exponent = b[14:7];
+    assign c_exponent = c[14:7];
 
-        a_fraction = a[6:0];
-        b_fraction = b[6:0];
-        c_fraction = c[6:0];
-    end
+    assign a_fraction = a[6:0];
+    assign b_fraction = b[6:0];
+    assign c_fraction = c[6:0];
+    
 
     logic  multiplication_sign;
     assign multiplication_sign = a_sign ^ b_sign;
