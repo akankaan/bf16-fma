@@ -155,6 +155,30 @@ def fma_bf16_ref(a:int, b:int, c:int):
               
         return round_exact_to_bf16(sign_result, abs(result))
 
+# Returns the expected bf16_multiplier output value given two bf16 multiplicands 
+# in the following format: (product, product_exponent, product_sign, product_zero)
+# Note that the two's complement conversion happens in the vector generation
+def multiply_ref(a: int, b: int):
+    sign_a, exponent_a, a_fraction = decode_bits(a)
+    sign_b, exponent_b, b_fraction = decode_bits(b)
+
+    product_sign = sign_a ^ sign_b
+    product_zero = (exponent_a == 0) or (exponent_b == 0)
+
+    # Add the implicit one to the MSB
+    mantissa_a = (1 << 7) | a_fraction
+    mantissa_b = (1 << 7) | b_fraction
+
+    # Directly assign zeros to product and exponent when product zero is true
+    if (product_zero):
+        product          = 0
+        product_exponent = 0
+    else:
+        product          = mantissa_a * mantissa_b
+        product_exponent = exponent_a + exponent_b - 127
+
+    return product, product_exponent, product_sign, product_zero
+
 # Smoke testing inline asserts only fire in direct execution
 if (__name__ == "__main__"):
 
