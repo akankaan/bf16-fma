@@ -28,7 +28,7 @@ module bf16_fma_top_tb;
 
     initial begin
         num_vectors = 0; num_errors = 0;
-        file = $fopen("tb/vec_special.txt", "r");
+        file = $fopen("tb/vectors/vec_special_fma.txt", "r");
         if (file == 0) begin
             $display("ERROR: cannot open vector file");
             $finish;

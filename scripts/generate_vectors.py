@@ -6,12 +6,74 @@
 import random
 import reference_model
 
+SEED = 1 # Using seed for reproducibility
+FMA_RANDOM_COUNT = 10000
+MUL_RANDOM_COUNT = 10000
+SPECIAL_VALUES = [0x7FC0, 0x7F80, 0xFF80, 0x0000, 0x8000, 0x0080, 0x7F7F, 0x3FC0]
+
+def bf16(sign, exponent, fraction):
+    return (sign << 15) | (exponent << 7) | fraction
+
 # Generate random vector that doesn't have special flags
 def random_normal_bf16_generation(rng):
     return (rng.randint(0,1) << 15) | (rng.randint(1,254) << 7 ) | (rng.randint(0,127))
 
-# Write the expected value of given vectors after operation
-def write_vector_results(path, vectors):
+def fma_random_vectors(rng, n):
+    vectors = []
+    for i in range(0, n):
+        vectors.append((random_normal_bf16_generation(rng),
+                        random_normal_bf16_generation(rng),
+                        random_normal_bf16_generation(rng)))
+    return vectors
+
+def fma_special_vectors():
+    vectors = []
+    for a in SPECIAL_VALUES:
+        for b in SPECIAL_VALUES:
+            for c in SPECIAL_VALUES:
+                vectors.append((a, b, c))
+    return vectors
+
+def multiplier_random_vectors(rng, n):
+    vectors = []
+    for i in range(0, n):
+        vectors.append((random_normal_bf16_generation(rng),
+                        random_normal_bf16_generation(rng)))
+    return vectors
+
+def multiplier_exhaustive_vectors():
+    vectors = []
+
+    # The following should test the multiplier exhaustively as exponent,
+    # fraction, sign, and zero are computed independently:
+
+    # Every fraction input pair with fixed exponent and sign
+    for a_fraction in range (0,128):
+        for b_fraction in range (0,128):
+            vectors.append((bf16(0, 128, a_fraction), bf16(0, 128, b_fraction)))
+
+    # Every exponent pair with fixed fraction and sign, except zeros
+    for a_exponent in range(1, 255):
+        for b_exponent in range(1, 255):
+            vectors.append((bf16(0, a_exponent, 0), bf16(0, b_exponent, 0)))
+
+    # Every sign pair with exponent and fraction fixed
+    for a_sign in range(0, 2):
+        for b_sign in range(0, 2):
+            vectors.append((bf16(a_sign, 128, 0), bf16(b_sign, 128, 0)))
+
+    # Zero and subnormal values
+    for a_exponent in (0, 127):
+        vectors.append((bf16(0, a_exponent, 0), bf16(0, 0, 0)))
+        vectors.append((bf16(0, a_exponent, 0), bf16(0, 0, 0x40)))
+    for b_exponent in (0, 127):
+        vectors.append((bf16(0, 0, 0), bf16(0, b_exponent, 0)))
+        vectors.append((bf16(0, 0, 0x40), bf16(0, b_exponent, 0)))
+
+    return vectors
+
+# Write the expected value of given vectors after fma operation
+def write_vector_results_fma(path, vectors):
     with open(path, "w") as f:
         for a, b, c in vectors:
 
@@ -21,26 +83,30 @@ def write_vector_results(path, vectors):
             f.write(f"{a:04x} {b:04x} {c:04x} {expected_result:04x}\n")
     print(f"{path}: {len(vectors)} vectors")
 
-rng = random.Random(1) # Using seed for reproducibility
+# Write the expected value of given vectors after multiplier operation
+def write_vector_results_multiplier(path, vectors):
+    with open(path, "w") as f:
+        for a, b in vectors:
 
-# Add random vectors to random vector list
-vector_generation_amount = 10000
-rand_vectors = []
+            product, exponent, sign, zero = reference_model.multiply_ref(a, b)
 
-for i in range(0, vector_generation_amount ):
-    rand_vectors.append((random_normal_bf16_generation(rng), 
-                         random_normal_bf16_generation(rng), 
-                         random_normal_bf16_generation(rng)))
+            # Writes multiplicands and their expected multiplier output values
+            # & 0x3FF writes the exponent as 10-bit two's complement
+            line = f"{a:04x} {b:04x} {product:04x} {exponent & 0x3FF:03x} " \
+                   f"{sign:01x} {zero:01x}"
 
-# Add special vectors to random vector list
-SPECIAL_VALUES = [0x7FC0, 0x7F80, 0xFF80, 0x0000, 0x8000, 0x0080, 0x7F7F, 0x3FC0]
-special_vectors = []
+            f.write(line + "\n")
 
-for a in SPECIAL_VALUES:
-    for b in SPECIAL_VALUES:
-        for c in SPECIAL_VALUES:
-            special_vectors.append((a, b, c))
+    print(f"{path}: {len(vectors)} vectors")
 
-# Calculate the result vectors and write to text file
-write_vector_results("tb/vec_random.txt",  rand_vectors)
-write_vector_results("tb/vec_special.txt", special_vectors)
+def main():
+    rng = random.Random(SEED)
+    write_vector_results_fma("tb/vectors/vec_random_fma.txt",  fma_random_vectors(rng, FMA_RANDOM_COUNT))
+    write_vector_results_fma("tb/vectors/vec_special_fma.txt", fma_special_vectors())
+    write_vector_results_multiplier("tb/vectors/vec_multiplier_random.txt", multiplier_random_vectors(rng, MUL_RANDOM_COUNT))
+    write_vector_results_multiplier("tb/vectors/vec_multiplier_exhaustive.txt", multiplier_exhaustive_vectors())
+
+
+
+if __name__ == "__main__":
+    main()

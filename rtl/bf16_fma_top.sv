@@ -10,8 +10,6 @@
 `ifndef _BF16_FMA_TOP_SV_
 `define _BF16_FMA_TOP_SV_
 
-`include "bf16_decode_classify.sv"
-
 module bf16_fma_top 
 (
     input  logic [15:0] a, // First multiplicand
@@ -49,6 +47,28 @@ module bf16_fma_top
         .c_fraction        (c_fraction),
         .bypass_arithmetic (bypass_arithmetic),
         .fma_flag_result   (fma_flag_result)
+    );
+
+    logic product_sign;
+    logic product_zero;
+
+    logic        [15:0] product;
+    logic signed [9:0]  product_exponent;
+
+    bf16_multiplier multiplier 
+    (
+        .a_sign            (a_sign),
+        .b_sign            (b_sign),
+        .a_zero            (a_zero),
+        .b_zero            (b_zero),
+        .a_exponent        (a_exponent),
+        .b_exponent        (b_exponent),
+        .a_fraction        (a_fraction),
+        .b_fraction        (b_fraction),
+        .product_sign      (product_sign),
+        .product_zero      (product_zero),
+        .product           (product),
+        .product_exponent  (product_exponent)
     );
 
     assign fma_result = bypass_arithmetic ? fma_flag_result : '0; // Stub to be replaced; will test the tester fails with this
