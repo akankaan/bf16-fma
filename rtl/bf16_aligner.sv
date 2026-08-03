@@ -3,7 +3,20 @@
 // Date  : July 29, 2026
 // Author: Kaan Akan
 //
-// Aligns the addend c to the product for addition
+// Aligns the addend c to the product for addition.
+//
+// The product is fixed in its [15:0] slot; the addend is parked at the top of
+// the frame and shifted right into alignment, so shifting is in one direction.
+//
+// The datapath width comes from where the addend can land relative to the
+// product: far above it (keep a whole addend on top), right over it (keep the
+// full product), or far below it (guard and sticky bits). Bits above + product
+// + guard = 3 * precision + 2 = 26 bits.
+//
+// Normally everything is anchored to the product except when c dominates the result,
+// meaning only the sticky bit of the product can influence the result in an exact tie.
+// This happnes when the product is zero, or the shift is negative; in which case
+// c sets the result and the exponent re-anchors to c.
 //
 // ================================================================
 
@@ -22,10 +35,7 @@ module bf16_aligner
     input logic [7:0] c_exponent,
     input logic [6:0] c_fraction,
 
-    // The size of the datapath is based on where the addend can land relative to the product:
-    // far above the product, then keep a whole addend on top; right over it, then keep the full product, 
-    // or far below the product, then guard and a sticky bit 
-    // Bits above + product + guard is 3 * precision + 2: 26 bits
+    // Outputs in a 26-bit (3 * precision + 2) datapath, see header
     output logic [25:0]        aligned_product,
     output logic [25:0]        aligned_addend,
     output logic               sticky,
@@ -33,31 +43,37 @@ module bf16_aligner
 );
 
     localparam int WIDTH       = 26;
-    localparam int INDEX       = 18; // c's LSB is indexed at bit 18 when unshifted so [25:18]
-    localparam int SHIFT_CONST = 11; // index difference between c's MSB and prod's unit bit (25-14)
+    localparam int INDEX       = 18; // c's LSB when unshifted, so c parks at [25:18]
+    localparam int SHIFT_CONST = 11; // gap between c's parked MSB and the product's unit bit (25-14)
 
-    // Form addend mantissa
+    // Form addend mantissa: implicit 1, flushed to 0 on DAZ
     logic [7:0] c_mantissa;
     assign c_mantissa = c_zero ? 8'd0 : {1'b1, c_fraction};
 
-    // Product is fixed in its [15:0] slot; addend starts at top of frame
-    // and shifted right into alignment so shifting is only in one directon 
-    assign aligned_product = product; // automatically zero enxtreds to 26 bits
-
-    // Determine how many bits c slides fown from its [25:18] position
+    // How many bits c slides down from its home; the sign carries the exponent gap
     logic signed [10:0] shift;
-    assign shift = product_exponent - $signed({2'b0, c_exponent}) + 11;
+    assign shift = product_exponent - $signed({2'b0, c_exponent}) + SHIFT_CONST;
 
-    // Locate c at the top and shift right into its place
+    // Park c at the top of the frame: [25:18]
     logic [WIDTH-1:0] c_home;
-    assign c_home         = {c_mantissa, {{WIDTH-8}{1'b0}}};
-    assign aligned_addend = c_home >> shift;
+    assign c_home = {c_mantissa, {(WIDTH-8){1'b0}}};
 
-    // Sticky bit is the OR of all bits that got shifted right
-    assign sticky = |( c_home & ((26'b1 << shift) - 1) );
+    // c decides the output when product is zero or c sits above the frame meaning, shift < 0
+    logic c_dominates;
+    assign c_dominates = product_zero || (shift < 0);
 
-    // Product anchor
-    assign aligned_exponent = product_exponent;
+    // anchor to c; -SHIFT_CONST cancels the shift while parking c at the top of the frame
+    logic signed [9:0] c_anchor_exp;
+    assign c_anchor_exp = $signed({2'b0, c_exponent}) - SHIFT_CONST;
+
+    // Product itself, or 0 when c dominates (product then survives only as sticky)
+    assign aligned_product  = c_dominates ? 26'b0        : product;
+    // Parked c when it dominates, else shifted right into place
+    assign aligned_addend   = c_dominates ? c_home       : (c_home >> shift);
+    // OR of product bits when c dominates, else the OR of addend bits shifted off the bottom
+    assign sticky           = c_dominates ? |product     : |(c_home & ((26'b1 << shift) - 1));
+    // c's anchor when it dominates, else the product exponent
+    assign aligned_exponent = c_dominates ? c_anchor_exp : product_exponent;
 
 endmodule
 
