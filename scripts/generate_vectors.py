@@ -7,8 +7,9 @@ import random
 import reference_model
 
 SEED = 1 # Using seed for reproducibility
-FMA_RANDOM_COUNT = 10000
-MUL_RANDOM_COUNT = 10000
+FMA_RANDOM_COUNT     = 10000
+MUL_RANDOM_COUNT     = 10000
+ALIGNER_RANDOM_COUNT = 10000
 SPECIAL_VALUES = [0x7FC0, 0x7F80, 0xFF80, 0x0000, 0x8000, 0x0080, 0x7F7F, 0x3FC0]
 
 def bf16(sign, exponent, fraction):
@@ -18,7 +19,7 @@ def bf16(sign, exponent, fraction):
 def random_normal_bf16_generation(rng):
     return (rng.randint(0,1) << 15) | (rng.randint(1,254) << 7 ) | (rng.randint(0,127))
 
-# Generate random vector that can have special flags
+# Generate random vector that can be zero and subnormal 
 def random_all_bf16_generation(rng):
     return (rng.randint(0,1) << 15) | (rng.randint(0,254) << 7 ) | (rng.randint(0,127))
 
@@ -93,17 +94,25 @@ def aligner_random_vectors(rng, n):
 
         c_zero = int(c_exponent == 0)
 
-        expected_result = reference_model.aligner_ref(product, product_zero, product_exponent,
-                                                      c_zero,  c_exponent,   c_fraction)
-
         vectors.append((product, product_zero, product_exponent, 
-                        c_zero,  c_exponent,   c_fraction, expected_result))
+                        c_zero,  c_exponent,   c_fraction))
 
     return vectors
 
 
-def aligner_special_vectors():
-    pass
+def aligner_edge_shift_vectors():
+
+    vectors = []
+
+    product, product_exponent, product_zero = 0xC000, 100, 0
+
+    # Go through shift = 100 - c_exp + 11 (from +31 down to -9)
+    for c_exponent in range(80, 121):
+        c_fraction, c_zero = 0x55, 0     # Chose non-zero fraction so sticky can go high
+
+        vectors.append((product, product_zero, product_exponent,
+                        c_zero, c_exponent, c_fraction))
+    return vectors
 
 # Write the expected value of given vectors after fma operation
 def write_vector_results_fma(path, vectors):
@@ -132,8 +141,23 @@ def write_vector_results_multiplier(path, vectors):
 
     print(f"{path}: {len(vectors)} vectors")
 
+# Write the expected value of given vectors after alignment operation
 def write_vector_results_aligner(path, vectors):
-    pass
+    with open(path, "w") as f:
+        for (product, product_zero, product_exponent,
+             c_zero,  c_exponent,   c_fraction) in vectors:
+
+            (aligned_product, aligned_addend,
+             sticky, aligned_exponent) = reference_model.aligner_ref(product, product_zero, product_exponent,
+                                                                     c_zero,  c_exponent,   c_fraction)
+            
+            line = (f"{product:04x} {product_zero:01x} {product_exponent & 0x3FF:03x} "
+                    f"{c_zero:01x} {c_exponent:02x} {c_fraction:02x} "
+                    f"{aligned_product:07x} {aligned_addend:07x} {sticky:01x} {aligned_exponent & 0x3FF:03x}")
+
+            f.write(line + "\n")
+
+    print(f"{path}: {len(vectors)} vectors")
 
 def main():
     rng = random.Random(SEED)
@@ -141,8 +165,10 @@ def main():
     write_vector_results_fma("tb/vectors/vec_special_fma.txt", fma_special_vectors())
     write_vector_results_multiplier("tb/vectors/vec_multiplier_random.txt", multiplier_random_vectors(rng, MUL_RANDOM_COUNT))
     write_vector_results_multiplier("tb/vectors/vec_multiplier_exhaustive.txt", multiplier_exhaustive_vectors())
-
-
+    write_vector_results_aligner("tb/vectors/vec_aligner_random.txt",
+                                aligner_random_vectors(rng, ALIGNER_RANDOM_COUNT))
+    write_vector_results_aligner("tb/vectors/vec_aligner_edge.txt",
+                                aligner_edge_shift_vectors())
 
 if __name__ == "__main__":
     main()
