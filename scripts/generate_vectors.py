@@ -18,6 +18,10 @@ def bf16(sign, exponent, fraction):
 def random_normal_bf16_generation(rng):
     return (rng.randint(0,1) << 15) | (rng.randint(1,254) << 7 ) | (rng.randint(0,127))
 
+# Generate random vector that can have special flags
+def random_all_bf16_generation(rng):
+    return (rng.randint(0,1) << 15) | (rng.randint(0,254) << 7 ) | (rng.randint(0,127))
+
 def fma_random_vectors(rng, n):
     vectors = []
     for i in range(0, n):
@@ -72,6 +76,35 @@ def multiplier_exhaustive_vectors():
 
     return vectors
 
+def aligner_random_vectors(rng, n):
+
+    vectors = []
+
+    for i in range(0, n):
+        
+        a = random_all_bf16_generation(rng)
+        b = random_all_bf16_generation(rng)
+        c = random_all_bf16_generation(rng)
+
+        (product, product_exponent, 
+         unused_prod_sign, product_zero) = reference_model.multiply_ref(a, b)
+
+        unused_c_sign, c_exponent, c_fraction = reference_model.decode_bits(c)
+
+        c_zero = int(c_exponent == 0)
+
+        expected_result = reference_model.aligner_ref(product, product_zero, product_exponent,
+                                                      c_zero,  c_exponent,   c_fraction)
+
+        vectors.append((product, product_zero, product_exponent, 
+                        c_zero,  c_exponent,   c_fraction, expected_result))
+
+    return vectors
+
+
+def aligner_special_vectors():
+    pass
+
 # Write the expected value of given vectors after fma operation
 def write_vector_results_fma(path, vectors):
     with open(path, "w") as f:
@@ -98,6 +131,9 @@ def write_vector_results_multiplier(path, vectors):
             f.write(line + "\n")
 
     print(f"{path}: {len(vectors)} vectors")
+
+def write_vector_results_aligner(path, vectors):
+    pass
 
 def main():
     rng = random.Random(SEED)
