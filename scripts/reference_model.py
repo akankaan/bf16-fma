@@ -179,6 +179,38 @@ def multiply_ref(a: int, b: int):
 
     return product, product_exponent, product_sign, product_zero
 
+# Returns the expected bf16_aligner outputs for the aligner's inputs
+def aligner_ref(product, product_zero, product_exponent, 
+                c_zero,  c_exponent,   c_fraction):
+
+    WIDTH       = 26
+    SHIFT_CONST = 11
+    MASK        = (1 << WIDTH) - 1 # helps truncate to ints to explicit width
+
+    # Form addend mantissa with implicit 1, zero denormals
+    c_mantissa = 0 if c_zero else ((1 << 7) | c_fraction)
+
+    # Locate c at the top of the frame, [25:18]
+    c_home = c_mantissa << (WIDTH - 8)
+
+    # Determine how far c slides down
+    shift = product_exponent - c_exponent + SHIFT_CONST
+
+    c_dominates = (product_zero) or (shift < 0)
+
+    if c_dominates:
+        aligned_product  = 0
+        aligned_addend   = c_home
+        sticky           = 1 if product != 0 else 0
+        aligned_exponent = c_exponent - SHIFT_CONST
+    else:
+        aligned_product  = product
+        aligned_addend   = (c_home >> shift) & MASK
+        sticky           = 1 if (c_home & ((1 << shift) - 1)) != 0 else 0
+        aligned_exponent = product_exponent
+
+    return aligned_product, aligned_addend, sticky, aligned_exponent
+
 # Smoke testing inline asserts only fire in direct execution
 if (__name__ == "__main__"):
 
