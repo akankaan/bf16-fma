@@ -211,6 +211,27 @@ def aligner_ref(product, product_zero, product_exponent,
 
     return aligned_product, aligned_addend, sticky, aligned_exponent
 
+# Returns the expected bf16_addsub outputs for the addsub's inputs
+def addsub_ref(aligned_product, aligned_addend, sticky, aligned_exponent,
+               product_sign, c_sign):
+
+    signed_product = -aligned_product if product_sign else aligned_product
+    signed_addend  = -aligned_addend  if c_sign       else aligned_addend
+    signed_sum     = signed_product + signed_addend
+
+    sum_sign = 1 if (signed_sum < 0) else 0
+    magnitude = abs(signed_sum)
+
+    # Borrow using subtrahend sticky during effective subtraction
+    effective_subtraction = product_sign ^ c_sign
+    borrow = effective_subtraction & sticky
+    # Prevent going down from zero when already at zero
+    sum = magnitude - borrow if magnitude > 0 else magnitude
+
+    sum_sticky   = sticky
+    sum_exponent = aligned_exponent
+    return (sum, sum_sign, sum_exponent, sum_sticky)
+
 # Smoke testing inline asserts only fire in direct execution
 if (__name__ == "__main__"):
 

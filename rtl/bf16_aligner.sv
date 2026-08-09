@@ -59,7 +59,7 @@ module bf16_aligner
     assign c_home = {c_mantissa, {(WIDTH-8){1'b0}}};
 
     // c decides the output when product is zero or c sits above the frame meaning, shift < 0
-    logic c_dominates;
+    logic  c_dominates;
     assign c_dominates = product_zero || (shift < 0);
 
     // anchor to c; -SHIFT_CONST cancels the shift while parking c at the top of the frame
