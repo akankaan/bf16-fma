@@ -5,13 +5,6 @@
 //
 // Adds or subtracts the aligned product and addend in two's complement.
 //
-// The effective operation is an add when the product and addend share a sign,
-// and a subtract when they differ. Each operand is taken to two's complement by
-// its sign, summed in the 26-bit frame (plus one carry bit), and the signed
-// result is split back into a sign and a magnitude for the normalizer.
-//
-// The exponent and sticky bit pass through to the normalizer.
-//
 // ================================================================
 
 `ifndef _BF16_ADDSUB_SV_
@@ -39,7 +32,7 @@ module bf16_addsub
     logic  effective_subtraction;
     assign effective_subtraction = c_sign ^ product_sign;
 
-    // Take magnitude to two's complement using its sign and add
+    // Take magnitude to two's complement
     logic signed [27:0] signed_product, signed_addend, signed_sum;
     assign signed_product = product_sign ? -$signed({2'b0, aligned_product}) : 
                                             $signed({2'b0, aligned_product});
@@ -49,15 +42,14 @@ module bf16_addsub
 
     assign signed_sum = signed_product + signed_addend;
 
-    // Split sign and magnitude
     assign sum_sign = signed_sum[27];
     logic [26:0] magnitude;
     assign magnitude = sum_sign ? -signed_sum : signed_sum;
 
-    // On a subtract, the smaller operand is the one that dropped bits into sticky, so we took
-    // away a bit too little which makes the magnitude land a bit high, so take it down by one
-    // when there's an effective subtraction and sticky
-    assign sum = magnitude - (effective_subtraction & sticky);
+    // On a subtract, we took away too little when there is a sticky
+    // which makes the magnitude land a bit high, so take it down by one.
+    // Nothing to borrow at zero magnitude, so guard keeps it at zero. 
+    assign sum = magnitude - (effective_subtraction & sticky & (magnitude != '0));
     assign sum_sticky   = sticky;
     assign sum_exponent = aligned_exponent;
 
