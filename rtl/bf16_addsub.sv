@@ -35,6 +35,9 @@ module bf16_addsub
     output logic signed [9:0]  sum_exponent,
     output logic               sum_sticky
 );
+    // If the product and addend signs disagree, the add is effectively a subtraction
+    logic  effective_subtraction;
+    assign effective_subtraction = c_sign ^ product_sign;
 
     // Take magnitude to two's complement using its sign and add
     logic signed [27:0] signed_product, signed_addend, signed_sum;
@@ -51,7 +54,10 @@ module bf16_addsub
     logic [26:0] magnitude;
     assign magnitude = sum_sign ? -signed_sum : signed_sum;
 
-    assign sum          = magnitude;
+    // On a subtract, the smaller operand is the one that dropped bits into sticky, so we took
+    // away a bit too little which makes the magnitude land a bit high, so take it down by one
+    // when there's an effective subtraction and sticky
+    assign sum = magnitude - (effective_subtraction & sticky);
     assign sum_sticky   = sticky;
     assign sum_exponent = aligned_exponent;
 
