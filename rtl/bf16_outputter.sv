@@ -1,6 +1,6 @@
 // ================================================================
 //
-// Date  : August 11, 2026
+// Date  : August 10, 2026
 // Author: Kaan Akan
 //
 // Result outputter for the Bfloat16 FMA IO sequencer.
