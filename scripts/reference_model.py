@@ -232,6 +232,25 @@ def addsub_ref(aligned_product, aligned_addend, sticky, aligned_exponent,
     sum_exponent = aligned_exponent
     return (sum, sum_sign, sum_exponent, sum_sticky)
 
+# Returns the expected bf16_normalizer outputs for the normalizer's inputs
+def normalizer_ref(sum, sum_sign, sum_exponent, sum_sticky):
+
+    is_zero = int(sum == 0)
+    norm_sign = sum_sign
+
+    # Find leading one's position
+    leading_one_pos = sum.bit_length() - 1 if sum else 0
+
+    # Shift leading one to bit 26 of the frame
+    shifted_sum = sum << (26 - leading_one_pos)
+
+    norm_significand = shifted_sum >> 19
+    guard            = (shifted_sum >> 18) & 1
+    sticky           = int(bool(shifted_sum & ((1 << 18) - 1)) or sum_sticky)
+    norm_exponent    = sum_exponent + leading_one_pos - 14
+
+    return (norm_significand, guard, sticky, norm_exponent, norm_sign, is_zero)
+
 # Smoke testing inline asserts only fire in direct execution
 if (__name__ == "__main__"):
 
