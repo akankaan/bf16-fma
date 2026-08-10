@@ -98,6 +98,12 @@ module bf16_decode_classify
             bypass_arithmetic = 1'b1;
             fma_flag_result   = {c_sign, 8'hFF, 7'd0};
         end
+        // Return -0, when product is -0 and addend is -0.
+        // Datapath loses the zero sign in addsub after two's magnitude conversion
+        else if ((a_zero || b_zero) && (c_zero) && (a_sign ^ b_sign) && (c_sign)) begin
+            bypass_arithmetic = 1'b1;
+            fma_flag_result   = {1'b1, 8'd0, 7'd0};
+        end
         // No special flags so arithmetic should occur
         else begin 
             bypass_arithmetic = '0;
