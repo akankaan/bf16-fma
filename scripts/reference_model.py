@@ -251,6 +251,28 @@ def normalizer_ref(sum, sum_sign, sum_exponent, sum_sticky):
 
     return (norm_significand, guard, sticky, norm_exponent, norm_sign, is_zero)
 
+# Returns the expected bf16_rounder output for the rounder's inputs
+def rounder_ref(norm_significand, guard, sticky, 
+                norm_exponent, norm_sign, is_zero):
+
+    round_up = int((guard and sticky) or 
+                  ((norm_significand & 1) and guard and not(sticky)));
+    rounded_significand = norm_significand + round_up
+
+    overflowed = (rounded_significand >> 8) & 1
+
+    exponent_final = norm_exponent + 1 if overflowed else norm_exponent
+    fraction       = 0 if overflowed else rounded_significand & ((1 << 7) - 1)
+
+    if (is_zero or exponent_final <= 0):
+        rounded_result = norm_sign << 15 # signed zero
+    elif (exponent_final >= 255):
+        rounded_result = (norm_sign << 15) | (0xFF << 7) # signed infinity
+    else:
+        rounded_result = (norm_sign << 15) | ((exponent_final & 0xFF) << 7) | fraction
+
+    return rounded_result
+
 # Smoke testing inline asserts only fire in direct execution
 if (__name__ == "__main__"):
 
