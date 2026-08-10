@@ -68,11 +68,6 @@ def round_exact_to_bf16(sign_bit: int, magnitude: Fraction):
         exponent    = exponent - 1
         significand = significand * 2
 
-    # Zero or subnormal as indicated by exponent is flushed to zero
-    # Check before possible rounding up
-    if ((exponent + 127) <= 0):
-        return sign_bit << 15
-
     # Get the exact fraction in [0,128) after the hidden 1
     fraction =  (significand - 1) * 128
 
@@ -96,8 +91,13 @@ def round_exact_to_bf16(sign_bit: int, magnitude: Fraction):
 
     biased_exponent = exponent + 127
 
+    # Flush to zero after rounding, so largest 
+    # subnormal can round to normal
+    if (biased_exponent <= 0):
+        return sign_bit << 15
+
     # Check for overflow after possible rounding up, if so return pos inf encoding
-    if ((exponent + 127) >= 255):
+    if (biased_exponent >= 255):
         return (sign_bit << 15) | 0x7F80
     
     return (sign_bit << 15) | (biased_exponent << 7) | fraction_floor
