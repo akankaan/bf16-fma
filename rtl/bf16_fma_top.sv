@@ -12,7 +12,7 @@
 
 module bf16_fma_top 
 (
-    input  logic [15:0] a, // First multiplicand
+    input  logic [15:0] a, // First  multiplicand
     input  logic [15:0] b, // Second multiplicand
     input  logic [15:0] c, // Addend
 
@@ -70,9 +70,81 @@ module bf16_fma_top
         .product           (product),
         .product_exponent  (product_exponent)
     );
+    
+    logic [25:0]        aligned_product;
+    logic [25:0]        aligned_addend;
+    logic               sticky;
+    logic signed [9:0]  aligned_exponent;
 
-    assign fma_result = bypass_arithmetic ? fma_flag_result : '0; // Stub to be replaced; will test the tester fails with this
+    bf16_aligner aligner 
+    (
+        .product          (product),
+        .product_zero     (product_zero),
+        .product_exponent (product_exponent),
+        .c_zero           (c_zero),
+        .c_exponent       (c_exponent),
+        .c_fraction       (c_fraction),
+        .aligned_product  (aligned_product),
+        .aligned_addend   (aligned_addend),
+        .sticky           (sticky),
+        .aligned_exponent (aligned_exponent)
+    );
 
+    logic [26:0]        sum;
+    logic               sum_sign;
+    logic signed [9:0]  sum_exponent;
+    logic               sum_sticky;
+
+    bf16_addsub addsub 
+    (
+        .aligned_product  (aligned_product),
+        .aligned_addend   (aligned_addend),
+        .sticky           (sticky),
+        .aligned_exponent (aligned_exponent),
+        .product_sign     (product_sign),
+        .c_sign           (c_sign),
+        .sum              (sum),
+        .sum_sign         (sum_sign),
+        .sum_exponent     (sum_exponent),
+        .sum_sticky       (sum_sticky)
+    );
+
+    logic [7:0]         norm_significand;
+    logic               guard;
+    logic               round_sticky;
+    logic signed [9:0]  norm_exponent;
+    logic               norm_sign;
+    logic               is_zero;
+
+    bf16_normalizer normalizer 
+    (
+        .sum              (sum),
+        .sum_sign         (sum_sign),
+        .sum_exponent     (sum_exponent),
+        .sum_sticky       (sum_sticky),
+        .norm_significand (norm_significand),
+        .guard            (guard),
+        .sticky           (round_sticky),
+        .norm_exponent    (norm_exponent),
+        .norm_sign        (norm_sign),
+        .is_zero          (is_zero)
+    );
+
+    logic [15:0] rounded_result;
+
+    bf16_rounder rounder
+    (
+        .norm_significand (norm_significand),
+        .guard            (guard),
+        .sticky           (round_sticky),
+        .norm_exponent    (norm_exponent),
+        .norm_sign        (norm_sign),
+        .is_zero          (is_zero),
+        .rounded_result   (rounded_result)
+    );
+
+    assign fma_result = bypass_arithmetic ? fma_flag_result : rounded_result;
+    
 endmodule
 
 `endif // _BF16_FMA_TOP_SV_
