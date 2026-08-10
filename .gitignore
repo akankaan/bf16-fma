@@ -1,0 +1,11 @@
+# Simulation build artifacts
+sim/*
+!sim/.gitkeep
+*.vcd
+
+# Python
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
