@@ -3,14 +3,14 @@
 // Date  : July 24, 2026
 // Author: Kaan Akan
 //
-// Bfloat16 FMA (Fused Multiply Add) unit top file
+// Bfloat16 FMA (Fused Multiply Add) unit compute core
 //
 // ================================================================
 
-`ifndef _BF16_FMA_TOP_SV_
-`define _BF16_FMA_TOP_SV_
+`ifndef _BF16_FMA_CORE_SV_
+`define _BF16_FMA_CORE_SV_
 
-module bf16_fma_top 
+module bf16_fma_core 
 (
     input  logic [15:0] a, // First  multiplicand
     input  logic [15:0] b, // Second multiplicand
@@ -147,4 +147,4 @@ module bf16_fma_top
     
 endmodule
 
-`endif // _BF16_FMA_TOP_SV_
+`endif // _BF16_FMA_CORE_SV_

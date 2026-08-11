@@ -4,18 +4,16 @@
 // Author: Kaan Akan
 //
 // IO sequencer for the Bfloat16 FMA on the tapeout.
-// Chip comes in with 8 in + 8bdir + 8 out IO pins, so a IO sequencer is required.
-// In addition there's one clk and one rst_n pin.
 //
 // The three 16-bit operands each load in one cycle over the 16-bit input bus.
 // Then outputted a byte at a time on the 8-bit output bus.
 //
 // ================================================================
 
-`ifndef _BF16_IO_SV_
-`define _BF16_IO_SV_
+`ifndef _BF16_FMA_IO_SV_
+`define _BF16_FMA_IO_SV_
 
-module bf16_io
+module bf16_fma_io
 (
     input  logic        clk,
     input  logic        rst_n,
@@ -41,7 +39,7 @@ module bf16_io
         .c              (c),
         .operands_valid (operands_valid)
     );
-    
+
     bf16_outputter outputter 
     (
         .clk      (clk),
@@ -54,4 +52,4 @@ module bf16_io
 
 endmodule
 
-`endif // _BF16_IO_SV_
+`endif // _BF16_FMA_IO_SV_

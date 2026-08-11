@@ -3,20 +3,20 @@
 // Date  : July 24, 2026
 // Author: Kaan Akan
 //
-// Testbench for Bfloat16 FMA (Fused Multiply Add) unit top file
+// Testbench for Bfloat16 FMA (Fused Multiply Add) unit compute core
 //
 // ================================================================
 
-`ifndef _BF16_FMA_TOP_TB_SV_
-`define _BF16_FMA_TOP_TB_SV_
+`ifndef _BF16_FMA_CORE_TB_SV_
+`define _BF16_FMA_CORE_TB_SV_
 
-module bf16_fma_top_tb;
+module bf16_fma_core_tb;
 
     logic [15:0] a, b, c;
     logic [15:0] fma_result;
     logic [15:0] expected_result;
 
-    bf16_fma_top fma_top 
+    bf16_fma_core fma_top 
     (
         .a          (a),
         .b          (b),
@@ -66,4 +66,4 @@ module bf16_fma_top_tb;
 
 endmodule
 
-`endif // _BF16_FMA_TOP_TB_SV_
+`endif // _BF16_FMA_CORE_TB_SV_
