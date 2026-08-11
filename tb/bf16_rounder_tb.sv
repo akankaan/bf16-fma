@@ -20,7 +20,7 @@ module bf16_rounder_tb;
     logic               is_zero;
     logic [15:0]        rounded_result;
 
-    bf16_rounder rounder
+    bf16_rounder dut
     (
         .norm_significand (norm_significand),
         .guard            (guard),

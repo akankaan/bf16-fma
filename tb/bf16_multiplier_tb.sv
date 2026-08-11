@@ -25,7 +25,7 @@ module bf16_multiplier_tb;
 
     assign c = 16'b0;
 
-    bf16_decode_classify decoder
+    bf16_decode_classify dut
     (
         .a                 (a),
         .b                 (b),
@@ -52,7 +52,7 @@ module bf16_multiplier_tb;
     logic        [15:0] product;
     logic signed [9:0]  product_exponent;
 
-    bf16_multiplier multiplier 
+    bf16_multiplier dut 
     (
         .a_sign            (a_sign),
         .b_sign            (b_sign),

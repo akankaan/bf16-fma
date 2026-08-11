@@ -24,7 +24,7 @@ module bf16_normalizer_tb;
     logic               norm_sign;
     logic               is_zero;
 
-    bf16_normalizer normalizer 
+    bf16_normalizer dut 
     (
         .sum              (sum),
         .sum_sign         (sum_sign),

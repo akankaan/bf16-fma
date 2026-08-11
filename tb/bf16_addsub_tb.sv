@@ -24,7 +24,7 @@ module bf16_addsub_tb;
     logic signed [9:0]  sum_exponent;
     logic               sum_sticky;
 
-    bf16_addsub addsub 
+    bf16_addsub dut 
     (
         .aligned_product  (aligned_product),
         .aligned_addend   (aligned_addend),

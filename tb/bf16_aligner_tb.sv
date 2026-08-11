@@ -25,7 +25,7 @@ module bf16_aligner_tb;
     logic               sticky;
     logic signed [9:0]  aligned_exponent;
 
-    bf16_aligner aligner 
+    bf16_aligner dut 
     (
         .product          (product),
         .product_zero     (product_zero),

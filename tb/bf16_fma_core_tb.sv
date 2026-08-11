@@ -16,7 +16,7 @@ module bf16_fma_core_tb;
     logic [15:0] fma_result;
     logic [15:0] expected_result;
 
-    bf16_fma_core fma_top 
+    bf16_fma_core dut 
     (
         .a          (a),
         .b          (b),
