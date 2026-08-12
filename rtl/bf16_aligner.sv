@@ -23,6 +23,7 @@
 `ifndef _BF16_ALIGNER_SV_
 `define _BF16_ALIGNER_SV_
 
+(* keep_hierarchy *)
 module bf16_aligner
 (
     // Product input after multiplication

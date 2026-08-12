@@ -13,6 +13,7 @@
 `ifndef _BF16_NORMALIZER_SV_
 `define _BF16_NORMALIZER_SV_
 
+(* keep_hierarchy *)
 module bf16_normalizer
 (
     // Add/subtract results from addsub

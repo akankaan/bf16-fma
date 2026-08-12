@@ -10,6 +10,7 @@
 `ifndef _BF16_DECODE_CLASSIFY_SV_
 `define _BF16_DECODE_CLASSIFY_SV_
 
+(* keep_hierarchy *)
 module bf16_decode_classify
 (
     input  logic [15:0] a,

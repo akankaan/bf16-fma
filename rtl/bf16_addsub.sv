@@ -10,6 +10,7 @@
 `ifndef _BF16_ADDSUB_SV_
 `define _BF16_ADDSUB_SV_
 
+(* keep_hierarchy *)
 module bf16_addsub
 (
     // Aligned to same magnitude from aligner

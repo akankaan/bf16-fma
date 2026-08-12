@@ -19,6 +19,7 @@
 `ifndef _BF16_MULTIPLIER_SV_
 `define _BF16_MULTIPLIER_SV_
 
+(* keep_hierarchy *)
 module bf16_multiplier
 (
     input  logic a_sign,

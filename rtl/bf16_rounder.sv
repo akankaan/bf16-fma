@@ -10,6 +10,7 @@
 `ifndef _BF16_ROUNDER_SV_
 `define _BF16_ROUNDER_SV_
 
+(* keep_hierarchy *)
 module bf16_rounder
 (
     // Normalized results
