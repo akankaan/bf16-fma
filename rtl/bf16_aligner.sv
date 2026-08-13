@@ -59,9 +59,11 @@ module bf16_aligner
     logic [WIDTH-1:0] c_home;
     assign c_home = {c_mantissa, {(WIDTH-8){1'b0}}};
 
-    // c decides the output when product is zero or c sits above the frame meaning, shift < 0
-    logic  c_dominates;
-    assign c_dominates = product_zero || (shift < 0);
+    // Anchor on c if the product is zero, or if nonzero c lies above the product frame.
+    // With DAZ, exponent field 0 denotes arithmetic zero rather than a magnitude exponent
+    // (should have been neg inf to denote its magnitude), so it cannot be compared with 
+    // the nonzero product's extended exponent for dominance.
+    assign c_dominates = product_zero || (!c_zero && (shift < 0));
 
     // anchor to c; -SHIFT_CONST cancels the shift while parking c at the top of the frame
     logic signed [9:0] c_anchor_exp;
