@@ -29,9 +29,9 @@ def random_all_bf16_generation(rng):
 def fma_random_vectors(rng, n):
     vectors = []
     for i in range(0, n):
-        vectors.append((random_normal_bf16_generation(rng),
-                        random_normal_bf16_generation(rng),
-                        random_normal_bf16_generation(rng)))
+        vectors.append((random_all_bf16_generation(rng),
+                        random_all_bf16_generation(rng),
+                        random_all_bf16_generation(rng)))
     return vectors
 
 def fma_special_vectors():
