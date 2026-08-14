@@ -3,6 +3,9 @@ sim/*
 !sim/.gitkeep
 *.vcd
 
+# Generated simulation vectors
+/tb/vectors/*.txt
+
 # Python
 __pycache__/
 *.pyc
