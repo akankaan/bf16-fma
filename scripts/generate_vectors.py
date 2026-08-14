@@ -12,12 +12,12 @@ from vector_generation import multiplier_vectors
 from vector_generation import normalizer_vectors
 from vector_generation import rounder_vectors
 
-FMA_RANDOM_COUNT        = 10000
-MUL_RANDOM_COUNT        = 10000
-ALIGNER_RANDOM_COUNT    = 10000
-ADDSUB_RANDOM_COUNT     = 10000
-NORMALIZER_RANDOM_COUNT = 10000
-ROUNDER_RANDOM_COUNT    = 10000
+FMA_RANDOM_COUNT        = 100000
+MUL_RANDOM_COUNT        = 100000
+ALIGNER_RANDOM_COUNT    = 100000
+ADDSUB_RANDOM_COUNT     = 100000
+NORMALIZER_RANDOM_COUNT = 100000
+ROUNDER_RANDOM_COUNT    = 100000
 
 def main():
     fma_rng        = random.Random(fma_vectors.SEED)
