@@ -90,4 +90,23 @@ fma:
 vectors:
 	python3 scripts/generate_vectors.py
 
-test: multiplier aligner addsub normalizer rounder fma_core loader outputter fma_io fma
+TESTS = multiplier aligner addsub normalizer rounder \
+	fma_core loader outputter fma_io fma
+
+test:
+	@status=0; \
+	for test in $(TESTS); do \
+		if $(MAKE) $$test > sim/$$test.log 2>&1; then \
+			summary=$$(grep "TB: PASS" sim/$$test.log | tail -1); \
+			prefix=$${summary%%PASS*}; \
+			suffix=$${summary#*PASS}; \
+			printf "%s\033[32mPASS\033[0m%s\n" "$$prefix" "$$suffix"; \
+		else \
+			summary=$$(grep "TB: FAIL" sim/$$test.log | tail -1); \
+			prefix=$${summary%%FAIL*}; \
+			suffix=$${summary#*FAIL}; \
+			printf "%s\033[31mFAIL\033[0m%s\n" "$$prefix" "$$suffix"; \
+			status=1; \
+		fi; \
+	done; \
+	exit $$status

@@ -54,8 +54,7 @@ module bf16_normalizer_tb;
             file_vectors = 0; file_errors = 0;
             file = $fopen(path, "r");
             if (file == 0) begin
-                $display("ERROR: cannot open %s", path);
-                $finish;
+                $fatal(1, "ERROR: cannot open %s", path);
             end
             while (!$feof(file)) begin
                 fields_read = $fscanf(file, "%h %h %h %h %h %h %h %h %h %h",
@@ -91,8 +90,14 @@ module bf16_normalizer_tb;
     initial begin
         num_vectors = 0; num_errors = 0;
         run_vectors("tb/vectors/vec_normalizer_random.txt");
-        $display("TOTAL: %0d vectors, %0d errors", num_vectors, num_errors);
-        $finish;
+        if (num_errors == 0) begin
+            $display("NORMALIZER TB: PASS -- %0d vectors, 0 errors", num_vectors);
+            $finish;
+        end
+        else begin
+            $fatal(1, "NORMALIZER TB: FAIL -- %0d vectors, %0d errors",
+                   num_vectors, num_errors);
+        end
     end
 
 endmodule

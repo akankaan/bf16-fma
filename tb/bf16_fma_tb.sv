@@ -48,8 +48,7 @@ module bf16_fma_tb;
         integer file, fields_read;
         file = $fopen(path, "r");
         if (file == 0) begin
-            $display("ERROR: cannot open %s", path);
-            $finish;
+            $fatal(1, "ERROR: cannot open %s", path);
         end
 
         // Reset
@@ -75,9 +74,14 @@ module bf16_fma_tb;
         while (expected_q.size() != 0) @(posedge clk);
 
         // Pass/fail messaging
-        if (errors == 0) $display("bf16_fma TB: PASS -- %0d vectors, 0 errors", num_vectors);
-        else             $display("bf16_fma TB: FAIL -- %0d vectors, %0d errors", num_vectors, errors);
-        $finish;
+        if (errors == 0) begin
+            $display("bf16_fma TB: PASS -- %0d vectors, 0 errors", num_vectors);
+            $finish;
+        end
+        else begin
+            $fatal(1, "bf16_fma TB: FAIL -- %0d vectors, %0d errors",
+                   num_vectors, errors);
+        end
     end
 
     logic [7:0]  expected_out_data_first_byte;

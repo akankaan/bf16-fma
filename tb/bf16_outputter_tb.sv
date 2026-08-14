@@ -22,6 +22,7 @@ module bf16_outputter_tb;
     logic [7:0]  out_byte;
     logic        busy;
 
+    integer num_vectors = 0;
     integer errors = 0;
 
     bf16_outputter dut
@@ -63,10 +64,16 @@ module bf16_outputter_tb;
         @(posedge clk); #1;
         check(busy === 1'b0,        "not busy on cycle 3");
         check(out_byte === 8'h00,   "out_byte zeros on cycle 3");
+        num_vectors = num_vectors + 1;
 
-        if (errors == 0) $display("OUTPUTTER TB: PASS");
-        else             $display("OUTPUTTER TB: %0d errors", errors);
-        $finish;
+        if (errors == 0) begin
+            $display("OUTPUTTER TB: PASS -- %0d vector, 0 errors", num_vectors);
+            $finish;
+        end
+        else begin
+            $fatal(1, "OUTPUTTER TB: FAIL -- %0d vector, %0d errors",
+                   num_vectors, errors);
+        end
     end
 
 endmodule

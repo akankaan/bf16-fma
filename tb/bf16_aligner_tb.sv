@@ -53,8 +53,7 @@ module bf16_aligner_tb;
             file_vectors = 0; file_errors = 0;
             file = $fopen(path, "r");
             if (file == 0) begin
-                $display("ERROR: cannot open %s", path);
-                $finish;
+                $fatal(1, "ERROR: cannot open %s", path);
             end
             while (!$feof(file)) begin
                 fields_read = $fscanf(file, "%h %h %h %h %h %h %h %h %h %h",
@@ -91,8 +90,14 @@ module bf16_aligner_tb;
         num_vectors = 0; num_errors = 0;
         run_vectors("tb/vectors/vec_aligner_random.txt");
         run_vectors("tb/vectors/vec_aligner_edge.txt");
-        $display("TOTAL: %0d vectors, %0d errors", num_vectors, num_errors);
-        $finish;
+        if (num_errors == 0) begin
+            $display("ALIGNER TB: PASS -- %0d vectors, 0 errors", num_vectors);
+            $finish;
+        end
+        else begin
+            $fatal(1, "ALIGNER TB: FAIL -- %0d vectors, %0d errors",
+                   num_vectors, num_errors);
+        end
     end
 
 endmodule

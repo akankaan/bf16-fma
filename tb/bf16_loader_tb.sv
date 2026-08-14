@@ -21,6 +21,7 @@ module bf16_loader_tb;
     logic [15:0] a, b, c;
     logic        operands_valid;
 
+    integer num_vectors = 0;
     integer errors = 0;
 
     bf16_loader dut
@@ -59,6 +60,7 @@ module bf16_loader_tb;
         check(a === 16'h1111, "a captured");
         check(b === 16'h2222, "b captured");
         check(c === 16'h3333, "c captured");
+        num_vectors = num_vectors + 1;
 
         // Second triple: valid must go low while loading, then go high after c
         @(negedge clk); in_data = 16'h4444;
@@ -72,10 +74,16 @@ module bf16_loader_tb;
         check(a === 16'h4444, "a captured");
         check(b === 16'h5555, "b captured");
         check(c === 16'h6666, "c captured");
+        num_vectors = num_vectors + 1;
 
-        if (errors == 0) $display("LOADER TB: PASS");
-        else             $display("LOADER TB: %0d errors", errors);
-        $finish;
+        if (errors == 0) begin
+            $display("LOADER TB: PASS -- %0d vectors, 0 errors", num_vectors);
+            $finish;
+        end
+        else begin
+            $fatal(1, "LOADER TB: FAIL -- %0d vectors, %0d errors",
+                   num_vectors, errors);
+        end
     end
 
 endmodule

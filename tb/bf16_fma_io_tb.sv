@@ -21,6 +21,7 @@ module bf16_fma_io_tb;
     logic [7:0]  out_data;
     logic        result_valid;
 
+    integer num_vectors = 0;
     integer errors = 0;
 
     bf16_fma_io dut
@@ -79,6 +80,7 @@ module bf16_fma_io_tb;
 
         check((out_data == 8'hAB), "second out byte correct");
         check((result_valid == 1), "output result is valid");
+        num_vectors = num_vectors + 1;
 
         @(negedge clk); in_data = 16'h6666;
         @(posedge clk); #1;
@@ -103,10 +105,16 @@ module bf16_fma_io_tb;
 
         @(posedge clk); #1;
         check((result_valid == 0), "output no longer driven");
+        num_vectors = num_vectors + 1;
 
-        if (errors == 0) $display("FMA_IO TB: PASS");
-        else             $display("FMA_IO TB: %0d errors", errors);
-        $finish;
+        if (errors == 0) begin
+            $display("FMA_IO TB: PASS -- %0d vectors, 0 errors", num_vectors);
+            $finish;
+        end
+        else begin
+            $fatal(1, "FMA_IO TB: FAIL -- %0d vectors, %0d errors",
+                   num_vectors, errors);
+        end
     end
 
 endmodule
