@@ -196,13 +196,18 @@ def aligner_ref(product, product_zero, product_exponent,
     # Determine how far c slides down
     shift = product_exponent - c_exponent + SHIFT_CONST
 
-    c_dominates = (product_zero) or (shift < 0)
+    c_dominates = (product_zero) or ((shift < 0) and (not c_zero))
 
     if c_dominates:
         aligned_product  = 0
         aligned_addend   = c_home
         sticky           = 1 if product != 0 else 0
         aligned_exponent = c_exponent - SHIFT_CONST
+    elif c_zero:
+        aligned_product  = product
+        aligned_addend   = 0
+        sticky           = 0
+        aligned_exponent = product_exponent
     else:
         aligned_product  = product
         aligned_addend   = (c_home >> shift) & MASK
