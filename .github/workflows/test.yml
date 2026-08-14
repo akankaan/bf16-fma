@@ -1,0 +1,42 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: 3.13
+
+      - name: Install Icarus Verilog
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends iverilog
+
+      - name: Generate vectors
+        run: make vectors
+
+      - name: Run tests
+        run: make test
+
+      - name: Upload simulation logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: simulation-logs
+          path: sim/*.log
+          if-no-files-found: ignore
