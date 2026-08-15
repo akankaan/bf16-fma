@@ -59,6 +59,7 @@ module bf16_fma_core_tb;
         num_vectors = 0; num_errors = 0;
         run_vectors("tb/vectors/vec_random_fma.txt");
         run_vectors("tb/vectors/vec_special_fma.txt");
+        run_vectors("tb/vectors/vec_directed_fma.txt");
         if (num_errors == 0) begin
             $display("FMA CORE TB: PASS -- %0d vectors, 0 errors", num_vectors);
             $finish;

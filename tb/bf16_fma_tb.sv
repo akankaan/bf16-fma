@@ -29,73 +29,60 @@ module bf16_fma_tb;
     );
 
     always #5 clk = ~clk;
-    string path = "tb/vectors/vec_random_fma.txt";
 
     logic [15:0] expected_q [$]; // scoreboard FIFO
     logic        first_cycle;
-
-
     logic [15:0] expected_push_result;
     logic [15:0] a, b, c;
+    logic [7:0]  expected_out_data_first_byte;
+    logic [15:0] expected_pop_result;
 
     integer errors      = 0;
     integer num_vectors = 0;
 
-    // Expected result driver
-    initial begin
-
-        // Open file
+    // Result driver
+    task run_vectors(input string path);
         integer file, fields_read;
-        file = $fopen(path, "r");
-        if (file == 0) begin
-            $fatal(1, "ERROR: cannot open %s", path);
-        end
-
-        // Reset
-        rst_n = 0; in_data = '0;
-        repeat (2) @(posedge clk);
-        first_cycle = 1'b1;
-
-        while (!$feof(file)) begin
-            fields_read = $fscanf(file, "%h %h %h %h", a, b, c, expected_push_result);
-            if (fields_read == 4) begin
-                // Push expected to FIFO
-                expected_q.push_back(expected_push_result);  
-                // Stop reset in first cycle
-                if (first_cycle) begin rst_n = 1'b1; first_cycle = 1'b0; end 
-                // Load the values
-                @(negedge clk); in_data = a; 
-                @(negedge clk); in_data = b;
-                @(negedge clk); in_data = c;
+        begin
+            file = $fopen(path, "r");
+            if (file == 0) begin
+                $fatal(1, "ERROR: cannot open %s", path);
             end
-        end
 
-        // Everything pushed must get popped
-        while (expected_q.size() != 0) @(posedge clk);
+            // Reset before each vector file
+            rst_n = 0; in_data = '0;
+            repeat (2) @(posedge clk);
+            first_cycle = 1'b1;
 
-        // Pass/fail messaging
-        if (errors == 0) begin
-            $display("bf16_fma TB: PASS -- %0d vectors, 0 errors", num_vectors);
-            $finish;
-        end
-        else begin
-            $fatal(1, "bf16_fma TB: FAIL -- %0d vectors, %0d errors",
-                   num_vectors, errors);
-        end
-    end
+            while (!$feof(file)) begin
+                fields_read = $fscanf(file, "%h %h %h %h", a, b, c, expected_push_result);
+                if (fields_read == 4) begin
+                    expected_q.push_back(expected_push_result);
 
-    logic [7:0]  expected_out_data_first_byte;
-    logic [15:0] expected_pop_result;
+                    if (first_cycle) begin
+                        rst_n = 1'b1;
+                        first_cycle = 1'b0;
+                    end
+
+                    @(negedge clk); in_data = a;
+                    @(negedge clk); in_data = b;
+                    @(negedge clk); in_data = c;
+                end
+            end
+
+            $fclose(file);
+
+            // Everything pushed must get popped
+            while (expected_q.size() != 0) @(posedge clk);
+        end
+    endtask
 
     // Result monitor
     initial begin
-        // Wait for reset stop
         wait (rst_n == 1);
         forever begin
             @(posedge clk); #1;
             if (result_valid) begin
-                
-                // When result valid gets high first time, out data is the lower byte
                 expected_out_data_first_byte = out_data;
 
                 @(posedge clk); #1;
@@ -110,6 +97,20 @@ module bf16_fma_tb;
         end
     end
 
+    initial begin
+        run_vectors("tb/vectors/vec_random_fma.txt");
+        run_vectors("tb/vectors/vec_special_fma.txt");
+        run_vectors("tb/vectors/vec_directed_fma.txt");
+
+        if (errors == 0) begin
+            $display("bf16_fma TB: PASS -- %0d vectors, 0 errors", num_vectors);
+            $finish;
+        end
+        else begin
+            $fatal(1, "bf16_fma TB: FAIL -- %0d vectors, %0d errors",
+                   num_vectors, errors);
+        end
+    end
 
 endmodule
 

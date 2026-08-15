@@ -31,6 +31,8 @@ def main():
                                          fma_vectors.fma_random_vectors(fma_rng, FMA_RANDOM_COUNT))
     fma_vectors.write_vector_results_fma("tb/vectors/vec_special_fma.txt",
                                          fma_vectors.fma_special_vectors())
+    fma_vectors.write_vector_results_fma("tb/vectors/vec_directed_fma.txt",
+                                             fma_vectors.fma_directed_vectors())
     
     multiplier_vectors.write_vector_results_multiplier(
         "tb/vectors/vec_multiplier_random.txt",

@@ -25,12 +25,46 @@ def fma_directed_vectors():
     vectors = []
 
     # Simple arithmetic and signs
-    vectors.append()
+    vectors.extend([
+        (0x3F80, 0x3F80, 0x0000),  #  1.0 * 1.0 + 0.0 = 1.0
+        (0x3F80, 0x4000, 0x4040),  #  1.0 * 2.0 + 3.0 = 5.0
+        (0xBF80, 0x4000, 0x4040),  # -1.0 * 2.0 + 3.0 = 1.0
+        (0x3F80, 0x4000, 0xC040),  #  1.0 * 2.0 - 3.0 = -1.0
+        (0x3FC0, 0x4000, 0x3F00),  #  1.5 * 2.0 + 0.5 = 3.5
+    ])
+
     # Signed zero and DAZ
-
+    vectors.extend([
+        (0x0000, 0x3F80, 0x8000),  # +0 + -0 = +0
+        (0x8000, 0x3F80, 0x8000),  # -0 + -0 = -0
+        (0x007F, 0x3F80, 0x3F80),  # subnormal a treated as zero, DAZ
+        (0x3F80, 0x3F80, 0x807F),  # subnormal c treated as zero, DAZ
+    ])
+    
     # Cancellation
+    vectors.extend([
+        (0x3F80, 0x3F80, 0xBF80),  # exact cancellation (+1 + -1)
+        (0xBF80, 0x3F80, 0x3F80),  # exact cancellation (-1 + +1)
+        (0x3F81, 0x3F81, 0xBF82),  # catastrophic cancellation, residual is +2^-14
+        (0xBF81, 0x3F81, 0x3F82),  # catastrophic cancellation, residual is -2^-14
+    ])
 
-    # Rounding boundaries
+    # Rounding
+    vectors.extend([
+        (0x3F80, 0x3F80, 0x3B00),  # below halfway between 0x3F80 and 0x3F81 (1 +   2^-9)
+        (0x3F80, 0x3F80, 0x3BC0),  # above halfway between 0x3F80 and 0x3F81 (1 + 3*2^-9)
+        (0x3F80, 0x3F80, 0x3B80),  # exact tie with even down   (1 +   2^-8)
+        (0x3F80, 0x3F80, 0x3C40),  # exact tie with even up     (1 + 3*2^-8)
+        (0x3F80, 0x3FFF, 0x3B80),  # tie between 0x3FFF and 0x4000, rounding carries to exponent
+    ])
+
+    # Overflow and underflow 
+    vectors.extend([
+        (0x0080, 0x3F00, 0x0000),  # +2^-127 flushes to +0
+        (0x8080, 0x3F00, 0x0000),  # -2^-127 flushes to -0
+        (0x7F7F, 0x4000, 0x0000),  # positive overflow, largest pos finite * 2
+        (0xFF7F, 0x4000, 0x0000),  # negative overflow, largest neg finite * 2
+    ])
 
     return vectors
 
