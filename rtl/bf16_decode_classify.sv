@@ -37,8 +37,8 @@ module bf16_decode_classify
     output logic [15:0] fma_flag_result
 );
 
-    // Decode sign, exponent, and significand fields according to 
-    // following format: {sign[15],exponent[14:7], significand[6:0]}
+    // Decode sign, exponent, and fraction fields according to
+    // following format: {sign[15], exponent[14:7], fraction[6:0]}
     assign a_sign = a[15];
     assign b_sign = b[15];
     assign c_sign = c[15];

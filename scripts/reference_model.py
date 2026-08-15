@@ -7,17 +7,17 @@ from fractions import Fraction
 import math
 
 def decode_bits(u: int):
-    # u: bf16 as a 16-bit unsigned int with the {sign, exp, mantissa} format
+    # u: bf16 as a 16-bit unsigned int with the {sign, exponent, fraction} format
     sign_bit        = (u >> 15) & (0x1)  #(0b1)
     exponent_bits   = (u >> 7)  & (0xFF) #(0b1111_1111)
-    mantissa_bits   = (u)       & (0x7F) #(0b0111_1111)
+    fraction_bits   = (u)       & (0x7F) #(0b0111_1111)
 
-    return sign_bit, exponent_bits, mantissa_bits
+    return sign_bit, exponent_bits, fraction_bits
 
 # Generates the exact value of bf16-encoded u with the implementation rules
 def bf16_to_exact(u: int):
 
-    sign_bit, exponent_bits, mantissa_bits = decode_bits(u)
+    sign_bit, exponent_bits, fraction_bits = decode_bits(u)
 
     assert exponent_bits != 0xFF, "inf and NaN are handled prior to exact conversion"
 
@@ -26,7 +26,7 @@ def bf16_to_exact(u: int):
         return Fraction(0)
 
     # +128 comes from the implicit 1 of significand
-    exact_value = (Fraction(128 + mantissa_bits, 128) * 
+    exact_value = (Fraction(128 + fraction_bits, 128) *
                    Fraction(2) ** (exponent_bits - 127))
 
     # Apply sign
@@ -102,80 +102,78 @@ def round_exact_to_bf16(sign_bit: int, magnitude: Fraction):
     
     return (sign_bit << 15) | (biased_exponent << 7) | fraction_floor
 
-def fma_bf16_ref(a:int, b:int, c:int):
-    # Flag handling
-    sign_a, exponent_a, fraction_a = decode_bits(a)
-    sign_b, exponent_b, fraction_b = decode_bits(b) 
-    sign_c, exponent_c, fraction_c = decode_bits(c) 
+# Reference model for the input and outputs of the decode_classify unit
+def decode_classify_ref(a, b, c):
 
-    a_inf  = (exponent_a == 255) and (fraction_a == 0)
-    a_nan  = (exponent_a == 255) and (fraction_a != 0)
-    a_zero = (exponent_a == 0) # Subnormals are considered zero
+    a_sign, a_exponent, a_fraction = decode_bits(a)
+    b_sign, b_exponent, b_fraction = decode_bits(b)
+    c_sign, c_exponent, c_fraction = decode_bits(c)
 
-    b_nan  = (exponent_b == 255) and (fraction_b != 0)
-    b_inf  = (exponent_b == 255) and (fraction_b == 0)
-    b_zero = (exponent_b == 0)
+    a_inf  = (a_exponent == 255) and (a_fraction == 0)
+    a_nan  = (a_exponent == 255) and (a_fraction != 0)
+    a_zero = (a_exponent == 0) # Subnormals are considered zero
 
-    c_inf  = (exponent_c == 255) and (fraction_c == 0)
-    c_nan  = (exponent_c == 255) and (fraction_c != 0)  
+    b_nan  = (b_exponent == 255) and (b_fraction != 0)
+    b_inf  = (b_exponent == 255) and (b_fraction == 0)
+    b_zero = (b_exponent == 0)
 
-    # Return NaN for any NaN input
+    c_inf  = (c_exponent == 255) and (c_fraction == 0)
+    c_nan  = (c_exponent == 255) and (c_fraction != 0)
+    c_zero = (c_exponent == 0)
+
+    bypass_arithmetic = 1
+
+    # Result is NaN for any NaN input
     if (a_nan or b_nan or c_nan):
-        return 0x7FC0
-    # Return NaN when one multiplicand is infinite and the other zero
+        fma_flag_result = 0x7FC0
+    # Result is NaN when one multiplicand is infinite and the other zero
     elif ((a_inf and b_zero) or (a_zero and b_inf)):
-        return 0x7FC0
-    # Return NaN when inf multiplication's sign doesn't match infinite addend's sign
-    elif ((a_inf or b_inf) and (c_inf) and ((sign_a ^ sign_b) != sign_c)):
-        return 0x7FC0
-    # Return inf, with appopriate sign, when at least one multiplicand is inf.
+        fma_flag_result = 0x7FC0
+    # Result is NaN when inf multiplication's sign doesn't match infinite addend's sign
+    elif ((a_inf or b_inf) and (c_inf) and ((a_sign ^ b_sign) != c_sign)):
+        fma_flag_result = 0x7FC0
+    # Result is inf, with appopriate sign, when at least one multiplicand is inf.
     # c is either finite or same signed inf
     elif (a_inf or b_inf):
-        return ((sign_a ^ sign_b) << 15) | 0x7F80
-    # Return inf, with appopriate sign, when addend is inf, multiplicands are finite
+        fma_flag_result = ((a_sign ^ b_sign) << 15) | 0x7F80
+    # Result is inf, with appopriate sign, when addend is inf, multiplicands are finite
     elif (c_inf):
-        return (sign_c << 15) | 0x7F80
+        fma_flag_result = (c_sign << 15) | 0x7F80
+    # Result is negative zero when product is -0 and addend is -0
+    elif ((a_zero or b_zero) and c_zero and (a_sign ^ b_sign) and c_sign):
+        fma_flag_result = 0x8000
     # No special flags detected, do arithmetic
     else:
-        result = add_exact(mul_exact(a,b), c)
-        if result > 0:
-            sign_result = 0
-        elif result < 0:
-            sign_result = 1
-        else:
-            # Fraction(0) has no sign and requires sign to be recovered
-            # 0 happens either because +-0 result of multiplication and c were added,
-            # or opposing signed values got cancelled. Only case that results in negative 0 sign
-            # is when negative zeros are added, so:
-            #   (-0) + (-0) = -0      ->  the only path to -0
-            #   (+0) + (+0) = +0
-            #   (+0) + (-0) = +0          (IEEE-754 zero-sum rule; +0 for RNE)
-            #   exact cancellation = +0   (IEEE-754 zero-sum rule; +0 under RNE)
-            sign_result = ((sign_a ^ sign_b) == 1) and (sign_c == 1)
-              
-        return round_exact_to_bf16(sign_result, abs(result))
+        bypass_arithmetic = 0
+        fma_flag_result   = 0
+
+    return (a_sign,     b_sign,     c_sign,
+            a_zero,     b_zero,     c_zero,
+            a_exponent, b_exponent, c_exponent,
+            a_fraction, b_fraction, c_fraction,
+            bypass_arithmetic,      fma_flag_result)
 
 # Returns the expected bf16_multiplier output value given two bf16 multiplicands 
 # in the following format: (product, product_exponent, product_sign, product_zero)
 # Note that the two's complement conversion happens in the vector generation
 def multiply_ref(a: int, b: int):
-    sign_a, exponent_a, a_fraction = decode_bits(a)
-    sign_b, exponent_b, b_fraction = decode_bits(b)
+    a_sign, a_exponent, a_fraction = decode_bits(a)
+    b_sign, b_exponent, b_fraction = decode_bits(b)
 
-    product_sign = sign_a ^ sign_b
-    product_zero = (exponent_a == 0) or (exponent_b == 0)
+    product_sign = a_sign ^ b_sign
+    product_zero = (a_exponent == 0) or (b_exponent == 0)
 
     # Add the implicit one to the MSB
-    mantissa_a = (1 << 7) | a_fraction
-    mantissa_b = (1 << 7) | b_fraction
+    a_significand = (1 << 7) | a_fraction
+    b_significand = (1 << 7) | b_fraction
 
     # Directly assign zeros to product and exponent when product zero is true
     if (product_zero):
         product          = 0
         product_exponent = 0
     else:
-        product          = mantissa_a * mantissa_b
-        product_exponent = exponent_a + exponent_b - 127
+        product          = a_significand * b_significand
+        product_exponent = a_exponent + b_exponent - 127
 
     return product, product_exponent, product_sign, product_zero
 
@@ -187,11 +185,11 @@ def aligner_ref(product, product_zero, product_exponent,
     SHIFT_CONST = 11
     MASK        = (1 << WIDTH) - 1 # helps truncate to ints to explicit width
 
-    # Form addend mantissa with implicit 1, zero denormals
-    c_mantissa = 0 if c_zero else ((1 << 7) | c_fraction)
+    # Form addend significand with implicit 1, zero denormals
+    c_significand = 0 if c_zero else ((1 << 7) | c_fraction)
 
     # Locate c at the top of the frame, [25:18]
-    c_home = c_mantissa << (WIDTH - 8)
+    c_home = c_significand << (WIDTH - 8)
 
     # Determine how far c slides down
     shift = product_exponent - c_exponent + SHIFT_CONST
@@ -278,7 +276,37 @@ def rounder_ref(norm_significand, guard, sticky,
 
     return rounded_result
 
-# Smoke testing inline asserts only fire in direct execution
+# Reference model for the full fma unit
+def fma_bf16_ref(a:int, b:int, c:int):
+
+    (a_sign,     b_sign,     c_sign,
+     a_zero,     b_zero,     c_zero,
+     a_exponent, b_exponent, c_exponent,
+     a_fraction, b_fraction, c_fraction,
+     bypass_arithmetic,      fma_flag_result) = decode_classify_ref(a, b, c)
+
+    if (bypass_arithmetic):
+        return fma_flag_result
+    else:
+        result = add_exact(mul_exact(a,b), c)
+        if result > 0:
+            result_sign = 0
+        elif result < 0:
+            result_sign = 1
+        else:
+            # Fraction(0) has no sign and requires sign to be recovered
+            # 0 happens either because +-0 result of multiplication and c were added,
+            # or opposing signed values got cancelled. Only case that results in negative 0 sign
+            # is when negative zeros are added, so:
+            #   (-0) + (-0) = -0      ->  the only path to -0
+            #   (+0) + (+0) = +0
+            #   (+0) + (-0) = +0          (IEEE-754 zero-sum rule; +0 for RNE)
+            #   exact cancellation = +0   (IEEE-754 zero-sum rule; +0 under RNE)
+            result_sign = ((a_sign ^ b_sign) == 1) and (c_sign == 1)
+
+        return round_exact_to_bf16(result_sign, abs(result))
+
+# Smoke testing in direct execution
 if (__name__ == "__main__"):
 
     # -------------------------------------------------------------------
@@ -335,7 +363,7 @@ if (__name__ == "__main__"):
     assert round_exact_to_bf16(0, 1 + Fraction(3,256)) == 0x3F82 # Tie rounds to even, so up
     assert round_exact_to_bf16(0, 1 + Fraction(5,256)) == 0x3F82 # Tie rounds to even, so down
 
-    assert round_exact_to_bf16(0, 2 - Fraction(1, 512)) == 0x4000 # Rounds up causes to exceed signicand range, see if shifted after rounding
+    assert round_exact_to_bf16(0, 2 - Fraction(1, 512)) == 0x4000 # Rounds up causes to exceed significand range, see if shifted after rounding
     assert round_exact_to_bf16(0, 2 - Fraction(1, 256)) == 0x4000 # Tie rounds up, check after rounding
     assert round_exact_to_bf16(0, 2 - Fraction(1, 128)) == 0x3FFF # No roundung, just max fraction
 
@@ -374,5 +402,3 @@ if (__name__ == "__main__"):
     print("Assertions passed")
 
     
-
-

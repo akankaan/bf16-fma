@@ -47,9 +47,9 @@ module bf16_aligner
     localparam int INDEX       = 18; // c's LSB when unshifted, so c parks at [25:18]
     localparam int SHIFT_CONST = 11; // gap between c's parked MSB and the product's unit bit (25-14)
 
-    // Form addend mantissa: implicit 1, flushed to 0 on DAZ
-    logic [7:0] c_mantissa;
-    assign c_mantissa = c_zero ? 8'd0 : {1'b1, c_fraction};
+    // Form addend significand: implicit 1, flushed to 0 on DAZ
+    logic [7:0] c_significand;
+    assign c_significand = c_zero ? 8'd0 : {1'b1, c_fraction};
 
     // How many bits c slides down from its home; the sign carries the exponent gap
     logic signed [10:0] shift;
@@ -57,7 +57,7 @@ module bf16_aligner
 
     // Park c at the top of the frame: [25:18]
     logic [WIDTH-1:0] c_home;
-    assign c_home = {c_mantissa, {(WIDTH-8){1'b0}}};
+    assign c_home = {c_significand, {(WIDTH-8){1'b0}}};
 
     // Anchor on c if the product is zero, or if nonzero c lies above the product frame.
     // With DAZ, exponent field 0 denotes arithmetic zero rather than a magnitude exponent
