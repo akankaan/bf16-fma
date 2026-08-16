@@ -19,7 +19,7 @@ module bf16_addsub
     input  logic               sticky,
     input  logic signed [9:0]  aligned_exponent,
 
-    // Signs from the multiplier and decoder 
+    // Signs from the multiplier and decode/classify unit
     input  logic               product_sign,
     input  logic               c_sign,
 

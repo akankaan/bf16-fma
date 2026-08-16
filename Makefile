@@ -11,6 +11,13 @@ fma_core:
 		tb/bf16_fma_core_tb.sv
 	vvp sim/fma_core_tb
 
+decode_classify:
+	iverilog -g2012 -s bf16_decode_classify_tb \
+		-o sim/decode_classify_tb \
+		rtl/bf16_decode_classify.sv \
+		tb/bf16_decode_classify_tb.sv
+	vvp sim/decode_classify_tb
+
 multiplier:
 	iverilog -g2012 -s bf16_multiplier_tb \
 		-o sim/multiplier_tb \
@@ -90,7 +97,7 @@ fma:
 vectors:
 	python3 scripts/generate_vectors.py
 
-TESTS = multiplier aligner addsub normalizer rounder \
+TESTS = decode_classify multiplier aligner addsub normalizer rounder \
 	fma_core loader outputter fma_io fma
 
 test:

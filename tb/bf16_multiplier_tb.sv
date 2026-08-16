@@ -25,7 +25,7 @@ module bf16_multiplier_tb;
 
     assign c = 16'b0;
 
-    bf16_decode_classify decoder
+    bf16_decode_classify decode_classify
     (
         .a                 (a),
         .b                 (b),

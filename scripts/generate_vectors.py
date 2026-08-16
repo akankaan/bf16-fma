@@ -7,25 +7,28 @@ import random
 
 from vector_generation import addsub_vectors
 from vector_generation import aligner_vectors
+from vector_generation import decode_classify_vectors
 from vector_generation import fma_vectors
 from vector_generation import multiplier_vectors
 from vector_generation import normalizer_vectors
 from vector_generation import rounder_vectors
 
-FMA_RANDOM_COUNT        = 100000
-MUL_RANDOM_COUNT        = 100000
-ALIGNER_RANDOM_COUNT    = 100000
-ADDSUB_RANDOM_COUNT     = 100000
-NORMALIZER_RANDOM_COUNT = 100000
-ROUNDER_RANDOM_COUNT    = 100000
+FMA_RANDOM_COUNT             = 100000
+DECODE_CLASSIFY_RANDOM_COUNT = 100000
+MUL_RANDOM_COUNT             = 100000
+ALIGNER_RANDOM_COUNT         = 100000
+ADDSUB_RANDOM_COUNT          = 100000
+NORMALIZER_RANDOM_COUNT      = 100000
+ROUNDER_RANDOM_COUNT         = 100000
 
 def main():
-    fma_rng        = random.Random(fma_vectors.SEED)
-    multiplier_rng = random.Random(multiplier_vectors.SEED)
-    aligner_rng    = random.Random(aligner_vectors.SEED)
-    addsub_rng     = random.Random(addsub_vectors.SEED)
-    normalizer_rng = random.Random(normalizer_vectors.SEED)
-    rounder_rng    = random.Random(rounder_vectors.SEED)
+    fma_rng             = random.Random(fma_vectors.SEED)
+    decode_classify_rng = random.Random(decode_classify_vectors.SEED)
+    multiplier_rng      = random.Random(multiplier_vectors.SEED)
+    aligner_rng         = random.Random(aligner_vectors.SEED)
+    addsub_rng          = random.Random(addsub_vectors.SEED)
+    normalizer_rng      = random.Random(normalizer_vectors.SEED)
+    rounder_rng         = random.Random(rounder_vectors.SEED)
 
     fma_vectors.write_vector_results_fma("tb/vectors/vec_random_fma.txt",
                                          fma_vectors.fma_random_vectors(fma_rng, FMA_RANDOM_COUNT))
@@ -33,6 +36,11 @@ def main():
                                          fma_vectors.fma_special_vectors())
     fma_vectors.write_vector_results_fma("tb/vectors/vec_directed_fma.txt",
                                              fma_vectors.fma_directed_vectors())
+
+    decode_classify_vectors.write_vector_results_decode_classify(
+        "tb/vectors/vec_decode_classify_random.txt",
+        decode_classify_vectors.decode_classify_random_vectors(
+            decode_classify_rng, DECODE_CLASSIFY_RANDOM_COUNT))
     
     multiplier_vectors.write_vector_results_multiplier(
         "tb/vectors/vec_multiplier_random.txt",
