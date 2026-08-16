@@ -44,14 +44,14 @@ module bf16_outputter
         end
     end
 
-    // Result register
-    logic [15:0] result_register;
+    // High byte result register
+    logic [7:0] result_high_byte_register;
     always_ff @(posedge clk) begin
         if (!rst_n) begin
-            result_register <= '0;
+            result_high_byte_register <= '0;
         end
         else if (start) begin
-            result_register <= result;
+            result_high_byte_register <= result[15:8];
         end
     end
 
@@ -67,11 +67,11 @@ module bf16_outputter
             busy     <= 1'b1;
         end
         else if (byte_index == 1'b1) begin
-            out_byte <= result_register[15:8];
+            out_byte <= result_high_byte_register;
             busy     <= 1'b1;
         end
         else begin
-            out_byte <= 1'b0;
+            out_byte <= 8'b0;
             busy     <= 1'b0;
         end
     end

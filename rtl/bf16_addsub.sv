@@ -33,24 +33,28 @@ module bf16_addsub
     logic  effective_subtraction;
     assign effective_subtraction = c_sign ^ product_sign;
 
-    // Take magnitude to two's complement
+    // Take magnitude to two's complement, 28th bit is for possible carry in addition
     logic signed [27:0] signed_product, signed_addend, signed_sum;
     assign signed_product = product_sign ? -$signed({2'b0, aligned_product}) : 
                                             $signed({2'b0, aligned_product});
-                            
+
     assign signed_addend = c_sign ? -$signed({2'b0, aligned_addend}) : 
                                      $signed({2'b0, aligned_addend});
 
     assign signed_sum = signed_product + signed_addend;
+    assign sum_sign   = signed_sum[27];
 
-    assign sum_sign = signed_sum[27];
+    // Take absolute value at full width, then narrow to 27-bit
     logic [26:0] magnitude;
-    assign magnitude = sum_sign ? -signed_sum : signed_sum;
+    assign magnitude = 27'(sum_sign ? -signed_sum : signed_sum);
 
     // On a subtract, we took away too little when there is a sticky
     // which makes the magnitude land a bit high, so take it down by one.
     // Nothing to borrow at zero magnitude, so guard keeps it at zero. 
-    assign sum = magnitude - (effective_subtraction & sticky & (magnitude != '0));
+    logic  decrement;
+    assign decrement = effective_subtraction && sticky && (magnitude != '0);
+    assign sum = magnitude - {26'b0, decrement};
+
     assign sum_sticky   = sticky;
     assign sum_exponent = aligned_exponent;
 

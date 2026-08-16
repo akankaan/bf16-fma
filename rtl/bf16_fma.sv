@@ -25,7 +25,9 @@ module bf16_fma
 
     logic [15:0] a, b, c;
     logic [15:0] fma_result;
-    logic        operands_valid;       // load complete
+    /* verilator lint_off UNUSEDSIGNAL */
+    logic operands_valid; // Kept for future load valid control possibility
+    /* verilator lint_on UNUSEDSIGNAL */
 
     // IO sequencer to deserialize inputs and serialize the result
     bf16_fma_io io

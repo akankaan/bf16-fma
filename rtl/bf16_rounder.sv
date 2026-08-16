@@ -31,15 +31,15 @@ module bf16_rounder
     logic  round_up;
     assign round_up = (guard && sticky) || (norm_significand[0] && guard && !sticky);
 
-    // One bit wider due to potential carry from round up
-    logic [8:0] rounded_significand;
-    assign rounded_significand = norm_significand + round_up;
+    // Detect 1.1111111 to 10.0000000 after rounding
+    logic  rounding_carry;
+    assign rounding_carry = (round_up && (norm_significand == 8'hFF));
 
     // Post-normalize after possible rounding caused overlfow
     logic signed [9:0] exponent_final;
     logic        [6:0] fraction;
-    assign exponent_final = norm_exponent + rounded_significand[8]; // MSB shows unit bit changed
-    assign fraction       = rounded_significand[8] ? 7'b0 : rounded_significand[6:0];
+    assign exponent_final = norm_exponent + $signed({9'b0, rounding_carry});
+    assign fraction       = norm_significand[6:0] + {6'b0, round_up};
 
     // Pack fields to rounded_result, and apply zero/DAZ and overflow
     always_comb begin

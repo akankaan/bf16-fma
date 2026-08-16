@@ -57,6 +57,7 @@ always_ff @(posedge clk) begin
             2'd0: a <= in_data;
             2'd1: b <= in_data;
             2'd2: c <= in_data;
+            default: begin end
         endcase
     end
 

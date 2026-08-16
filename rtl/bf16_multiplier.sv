@@ -50,8 +50,8 @@ assign b_significand = b_zero ? 8'd0 : {1'b1, b_fraction};
 assign product       = a_significand * b_significand;
 
 logic signed [9:0] a_exponent_signed, b_exponent_signed;
-assign a_exponent_signed = a_exponent;
-assign b_exponent_signed = b_exponent;
+assign a_exponent_signed = {2'b0, a_exponent};
+assign b_exponent_signed = {2'b0, b_exponent};
 assign product_exponent  = product_zero ? 
                            (10'sd0) :
                            (a_exponent_signed + b_exponent_signed - 10'sd127);

@@ -40,7 +40,7 @@ module bf16_normalizer
         leading_one_pos = 0;
         for (int i = 0; i < 27; i++) begin
             if (sum[i]) begin
-                leading_one_pos = i;
+                leading_one_pos = 5'(i);
             end
         end
     end

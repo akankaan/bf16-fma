@@ -43,9 +43,9 @@ module bf16_aligner
     output logic signed [9:0]  aligned_exponent
 );
 
-    localparam int WIDTH       = 26;
-    localparam int INDEX       = 18; // c's LSB when unshifted, so c parks at [25:18]
-    localparam int SHIFT_CONST = 11; // gap between c's parked MSB and the product's unit bit (25-14)
+    localparam int WIDTH = 26;
+    // Gap between c's parked MSB and the product's unit bit (25-14)
+    localparam logic signed [9:0] SHIFT_CONST = 10'sd11;
 
     // Form addend significand: implicit 1, flushed to 0 on DAZ
     logic [7:0] c_significand;
@@ -63,6 +63,7 @@ module bf16_aligner
     // With DAZ, exponent field 0 denotes arithmetic zero rather than a magnitude exponent
     // (should have been neg inf to denote its magnitude), so it cannot be compared with 
     // the nonzero product's extended exponent for dominance.
+    logic  c_dominates;
     assign c_dominates = product_zero || (!c_zero && (shift < 0));
 
     // anchor to c; -SHIFT_CONST cancels the shift while parking c at the top of the frame
@@ -70,7 +71,7 @@ module bf16_aligner
     assign c_anchor_exp = $signed({2'b0, c_exponent}) - SHIFT_CONST;
 
     // Product itself, or 0 when c dominates (product then survives only as sticky)
-    assign aligned_product  = c_dominates ? 26'b0        : product;
+    assign aligned_product  = c_dominates ? 26'b0        : {10'b0, product};
     // Parked c when it dominates, else shifted right into place
     assign aligned_addend   = c_dominates ? c_home       : (c_home >> shift);
     // OR of product bits when c dominates, else the OR of addend bits shifted off the bottom
