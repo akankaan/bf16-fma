@@ -100,7 +100,7 @@ vectors:
 TESTS = decode_classify multiplier aligner addsub normalizer rounder \
 	fma_core loader outputter fma_io fma
 
-test:
+test: lint
 	@status=0; \
 	for test in $(TESTS); do \
 		if $(MAKE) $$test > sim/$$test.log 2>&1; then \
@@ -117,3 +117,6 @@ test:
 		fi; \
 	done; \
 	exit $$status
+
+lint:
+	verilator --lint-only -Wall --top-module bf16_fma rtl/*.sv

@@ -22,10 +22,10 @@ jobs:
         with:
           python-version: 3.13
 
-      - name: Install Icarus Verilog
+      - name: Install HDL tools
         run: |
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends iverilog
+          sudo apt-get install --yes --no-install-recommends iverilog verilator
 
       - name: Generate vectors
         run: make vectors
