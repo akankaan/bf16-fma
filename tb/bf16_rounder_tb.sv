@@ -70,6 +70,7 @@ module bf16_rounder_tb;
     initial begin
         num_vectors = 0; num_errors = 0;
         run_vectors("tb/vectors/vec_rounder_random.txt");
+        run_vectors("tb/vectors/vec_rounder_directed.txt");
         if (num_errors == 0) begin
             $display("ROUNDER TB: PASS -- %0d vectors, 0 errors", num_vectors);
             $finish;

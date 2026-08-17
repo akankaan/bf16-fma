@@ -38,7 +38,7 @@ module bf16_rounder
     // Post-normalize after possible rounding caused overlfow
     logic signed [9:0] exponent_final;
     logic        [6:0] fraction;
-    assign exponent_final = norm_exponent + $signed({9'b0, rounding_carry});
+    assign exponent_final = norm_exponent + $signed({9'b0, rounding_carry}); 
     assign fraction       = norm_significand[6:0] + {6'b0, round_up};
 
     // Pack fields to rounded_result, and apply zero/DAZ and overflow

@@ -76,6 +76,9 @@ def main():
     rounder_vectors.write_vector_results_rounder(
         "tb/vectors/vec_rounder_random.txt",
         rounder_vectors.rounder_random_vectors(rounder_rng, ROUNDER_RANDOM_COUNT))
+    rounder_vectors.write_vector_results_rounder(
+        "tb/vectors/vec_rounder_directed.txt",
+        rounder_vectors.rounder_directed_vectors())
 
 if __name__ == "__main__":
     main()

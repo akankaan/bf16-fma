@@ -4,6 +4,47 @@ from .vector_common import random_finite_bf16_generation
 
 SEED = 1
 
+def rounder_directed_vectors():
+
+    vectors = []
+    # Vector order: norm_significand, guard,     sticky, 
+    #               norm_exponent,    norm_sign, is_zero
+
+    # Zero and underflow
+    vectors.extend([
+        (0x00, 0, 0, 113, 0, 1), # exact cancellation
+        (0x80, 0, 0,  -1, 0, 0), # exponent less than zero
+        (0x80, 0, 0,   0, 0, 0), # exponent equal to  zero
+        (0x80, 0, 0,   0, 1, 0), # exponent equal to  zero, sign negative
+    ])
+
+    # RNE 
+    vectors.extend([
+        (0x80, 0, 0, 127, 0, 0), # exact, no rounding
+        (0x80, 0, 1, 127, 0, 0), # sticky alone, no rounding
+        (0x80, 1, 1, 127, 0, 0), # sticky and guard high, round
+        (0x80, 1, 0, 127, 0, 0), # exact tie, even LSB so no rounding
+        (0x81, 1, 0, 127, 0, 0), # exact tie, odd LSB so round up to even
+    ])
+
+    # Rounding causes exponent increase
+    vectors.extend([
+        (0xFF, 1, 0, 127, 0, 0),
+        (0xFF, 1, 1, 127, 0, 0),
+        (0xFF, 1, 0,   0, 0, 0), # carry makes subnormal smallest normal
+        (0xFF, 1, 0,  -1, 0, 0), # still flushed as carry makes exponent 0 from -1
+    ])
+
+    # Overflow 
+    vectors.extend([
+        (0xFF, 0, 0, 254, 0, 0), # maximum finite, no rounding
+        (0xFF, 1, 0, 254, 0, 0), # maximum mangitude positive finite becomes +inf with rounding
+        (0xFF, 1, 0, 254, 1, 0), # maximum magnitude negative finite becomes -inf with rounding
+        (0x80, 0, 0, 255, 0, 0), # exponent is already overflown without rounding 
+    ])
+
+    return vectors
+
 # Generate random input vectors for the rounder unit
 def rounder_random_vectors(rng, n):
 
@@ -27,7 +68,7 @@ def rounder_random_vectors(rng, n):
 
         (sum, sum_sign, 
          sum_exponent, sum_sticky) = reference_model.addsub_ref(aligned_product,  aligned_addend, sticky, 
-                                                                aligned_exponent, product_sign, c_sign)
+                                                                aligned_exponent, product_sign,   c_sign)
 
         (norm_significand, guard, sticky, 
          norm_exponent, norm_sign, is_zero) = reference_model.normalizer_ref(sum, sum_sign,
