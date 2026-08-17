@@ -69,6 +69,9 @@ def main():
     normalizer_vectors.write_vector_results_normalizer(
         "tb/vectors/vec_normalizer_random.txt",
         normalizer_vectors.normalizer_random_vectors(normalizer_rng, NORMALIZER_RANDOM_COUNT))
+    normalizer_vectors.write_vector_results_normalizer(
+        "tb/vectors/vec_normalizer_directed.txt",
+        normalizer_vectors.normalizer_directed_vectors())
     
     rounder_vectors.write_vector_results_rounder(
         "tb/vectors/vec_rounder_random.txt",

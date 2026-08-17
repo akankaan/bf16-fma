@@ -4,6 +4,38 @@ from .vector_common import random_finite_bf16_generation
 
 SEED = 1
 
+def normalizer_directed_vectors():
+
+    vectors = []
+    # Vector order: sum, sum_sign, sum_exponent, sum_sticky
+
+    # Zero handling 
+    vectors.extend([
+        (0x0000000, 0,   0,   0),
+        (0x0000000, 1,   0,   0),
+        (0x0000000, 1,   127, 0), # exact cancellation
+    ])
+
+    # Leading one shift sweep
+    for leading_one_pos in range(26):
+        vectors.append((1 << leading_one_pos, 0, 127, 0))
+
+    # Guard and sticky
+    vectors.extend([
+        (0x0000000, 0, 127, 0), # guard=0, sticky=0
+        (0x0000000, 0, 127, 1), # guard=0, sticky=1
+
+        (0x0008000, 0, 127, 0), # guard=0, sticky=0
+        (0x0008000, 0, 127, 1), # guard=0, sticky=1
+        (0x0008080, 0, 127, 0), # guard=1, sticky=0
+        (0x0008080, 0, 127, 1), # guard=1, sticky=1
+        (0x0008040, 0, 127, 0), # guard=0, sticky=1
+        (0x00080C0, 0, 127, 0), # guard=1, sticky=1
+        (0x00080C0, 0, 127, 1), # guard=1, sticky=1 (from both shift and sum_sticky)
+    ]) 
+
+    return vectors
+
 # Generate random input vectors for the normalizer unit
 def normalizer_random_vectors(rng, n):
 

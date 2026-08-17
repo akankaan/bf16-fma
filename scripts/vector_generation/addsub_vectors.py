@@ -5,10 +5,10 @@ from .vector_common import random_finite_bf16_generation
 SEED = 1
 
 def addsub_directed_vectors():
-    vectors = []
 
-    # Input vector order: aligned_product,  aligned_addend, sticky, 
-    #                     aligned_exponent, product_sign,   c_sign
+    vectors = []
+    # Vector order: aligned_product,  aligned_addend, sticky, 
+    #               aligned_exponent, product_sign,   c_sign
 
     # Sign combinations
     vectors.extend([
