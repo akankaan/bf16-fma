@@ -87,6 +87,8 @@ module bf16_addsub_tb;
     initial begin
         num_vectors = 0; num_errors = 0;
         run_vectors("tb/vectors/vec_addsub_random.txt");
+        run_vectors("tb/vectors/vec_addsub_directed.txt");
+        
         if (num_errors == 0) begin
             $display("ADDSUB TB: PASS -- %0d vectors, 0 errors", num_vectors);
             $finish;

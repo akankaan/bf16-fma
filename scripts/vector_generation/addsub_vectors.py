@@ -4,6 +4,56 @@ from .vector_common import random_finite_bf16_generation
 
 SEED = 1
 
+def addsub_directed_vectors():
+    vectors = []
+
+    # Input vector order: aligned_product,  aligned_addend, sticky, 
+    #                     aligned_exponent, product_sign,   c_sign
+
+    # Sign combinations
+    vectors.extend([
+        (0xAAAA, 0xAA, 0, 120, 0, 0),
+        (0xAAAA, 0xAA, 0, 120, 0, 1),
+        (0xAAAA, 0xAA, 0, 120, 1, 0),
+        (0xAAAA, 0xAA, 0, 120, 1, 1),    
+    ])
+
+    # Cancellations
+    vectors.extend([
+        # Exact
+        (0x00AA, 0xAA, 0, 120, 0, 1),
+        (0x00AA, 0xAA, 0, 120, 1, 0),
+        # Catastrophic
+        (0x00AA, 0xA9, 0, 120, 0, 1),
+        (0x00AA, 0xA9, 0, 120, 1, 0),
+        (0x00AA, 0xAB, 0, 120, 0, 1),   
+        (0x00AA, 0xAB, 0, 120, 1, 0),    
+    ])
+
+    # Sticky in addition
+    vectors.extend([
+        (0xAAAA, 0xAA, 1, 120, 0, 0),
+        (0xAAAA, 0xAA, 1, 120, 1, 1),
+    ])
+
+    # Sticky decrement and its zero special case
+    vectors.extend([
+        # Exact cancellation causes magnitude equal zero special case,
+        # so decrement shouldn't go high
+        (0x00BB, 0xBB, 1, 120, 0, 1),
+        (0x00BB, 0xBB, 1, 120, 1, 0),
+        (0x00AA, 0xAA, 1, 120, 0, 1),
+        (0x00AA, 0xAA, 1, 120, 1, 0),
+
+        # Magnitude isn't exactly zero so decrement should go high
+        (0xC0BB, 0xBB, 1, 120, 0, 1),
+        (0xC0BB, 0xBB, 1, 120, 1, 0),
+        (0x00AA, 0xA9, 1, 120, 0, 1),
+        (0x00AA, 0xBA, 1, 120, 1, 0),
+    ])
+
+    return vectors
+
 # Generate random input vectors for the addsub unit
 def addsub_random_vectors(rng, n):
 
@@ -26,7 +76,7 @@ def addsub_random_vectors(rng, n):
                                                                         c_zero,  c_exponent,   c_fraction)
 
         vectors.append((aligned_product,  aligned_addend, sticky, 
-                        aligned_exponent, product_sign, c_sign))
+                        aligned_exponent, product_sign,   c_sign))
 
     return vectors
 

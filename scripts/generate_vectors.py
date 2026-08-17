@@ -62,6 +62,9 @@ def main():
     addsub_vectors.write_vector_results_addsub(
         "tb/vectors/vec_addsub_random.txt",
         addsub_vectors.addsub_random_vectors(addsub_rng, ADDSUB_RANDOM_COUNT))
+    addsub_vectors.write_vector_results_addsub(
+        "tb/vectors/vec_addsub_directed.txt",
+        addsub_vectors.addsub_directed_vectors())
     
     normalizer_vectors.write_vector_results_normalizer(
         "tb/vectors/vec_normalizer_random.txt",
