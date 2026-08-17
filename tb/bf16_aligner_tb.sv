@@ -89,7 +89,8 @@ module bf16_aligner_tb;
     initial begin
         num_vectors = 0; num_errors = 0;
         run_vectors("tb/vectors/vec_aligner_random.txt");
-        run_vectors("tb/vectors/vec_aligner_edge.txt");
+        run_vectors("tb/vectors/vec_aligner_exhaustive_shift_sweep.txt");
+        run_vectors("tb/vectors/vec_aligner_directed.txt");
         if (num_errors == 0) begin
             $display("ALIGNER TB: PASS -- %0d vectors, 0 errors", num_vectors);
             $finish;

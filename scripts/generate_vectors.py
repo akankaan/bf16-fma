@@ -53,8 +53,11 @@ def main():
         "tb/vectors/vec_aligner_random.txt",
         aligner_vectors.aligner_random_vectors(aligner_rng, ALIGNER_RANDOM_COUNT))
     aligner_vectors.write_vector_results_aligner(
-        "tb/vectors/vec_aligner_edge.txt",
-        aligner_vectors.aligner_edge_shift_vectors())
+        "tb/vectors/vec_aligner_exhaustive_shift_sweep.txt",
+        aligner_vectors.aligner_exhaustive_shift_sweep_vectors())
+    aligner_vectors.write_vector_results_aligner(
+        "tb/vectors/vec_aligner_directed.txt",
+        aligner_vectors.aligner_directed_vectors())
     
     addsub_vectors.write_vector_results_addsub(
         "tb/vectors/vec_addsub_random.txt",
