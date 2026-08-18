@@ -19,13 +19,14 @@ module bf16_fma_io
     input  logic        rst_n,
 
     // For load 
-    input  logic [15:0] in_data,        // operand word from pins
-    output logic [15:0] a, b, c,        // operand triples to fma unit
-    output logic        operands_valid, // goes high when load completes
+    input  logic [15:0] in_data,          // operand word from pins
+    output logic [15:0] a, b, c,          // operand triples to fma unit
+    output logic        operands_valid,   // goes high when load completes
 
     // For output
-    input  logic [15:0] fma_result,     // computed result from fma unit
-    output logic [7:0]  out_data,       // result byte to pins
+    input  logic [15:0] fma_result,       // computed result from fma unit
+    input  logic        fma_result_valid, // start output when pipeline has valid output
+    output logic [7:0]  out_data,         // result byte to pins
     output logic        result_valid
 );
 
@@ -42,12 +43,12 @@ module bf16_fma_io
 
     bf16_outputter outputter 
     (
-        .clk      (clk),
-        .rst_n    (rst_n),
-        .result   (fma_result),
-        .start    (operands_valid), // this currently works b/c fma is combinational
-        .out_byte (out_data),       // and will need a delaying shift reg or fsm when pipelining
-        .busy     (result_valid)    // busy indicates the output byte is valid
+        .clk              (clk),
+        .rst_n            (rst_n),
+        .result           (fma_result),
+        .start            (fma_result_valid), 
+        .out_byte         (out_data),       
+        .busy             (result_valid) // indicates the output byte is valid
     );
 
 endmodule

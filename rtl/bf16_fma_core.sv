@@ -12,13 +12,50 @@
 
 module bf16_fma_core 
 (
+    input  logic clk,
+    input  logic rst_n,
+    input  logic operands_valid,
+
     input  logic [15:0] a, // First  multiplicand
     input  logic [15:0] b, // Second multiplicand
     input  logic [15:0] c, // Addend
 
-    output logic [15:0] fma_result
+    output logic [15:0] fma_result,
+    output logic        fma_result_valid
+
 );
 
+    // Pipeline register data structs
+    typedef struct packed {
+        logic               valid;
+
+        logic [25:0]        aligned_product;
+        logic [25:0]        aligned_addend;
+        logic               sticky;
+        logic signed [9:0]  aligned_exponent;
+        logic               product_sign;
+        logic               c_sign;
+
+        logic               bypass_arithmetic;
+        logic [15:0]        fma_flag_result;
+    } aligner_to_addsub_t;
+
+    typedef struct packed {
+        logic               valid;
+
+        logic [26:0]        sum;
+        logic               sum_sign;
+        logic signed [9:0]  sum_exponent;
+        logic               sum_sticky;
+
+        logic               bypass_arithmetic;
+        logic [15:0]        fma_flag_result;
+    } addsub_to_normalizer_t;
+
+    aligner_to_addsub_t    aligner_to_addsub_q;
+    addsub_to_normalizer_t addsub_to_normalizer_q;
+
+    // Main FMA implementation starts here
     logic a_sign, b_sign, c_sign;
     logic a_zero, b_zero, c_zero;
 
@@ -97,12 +134,12 @@ module bf16_fma_core
 
     bf16_addsub addsub 
     (
-        .aligned_product  (aligned_product),
-        .aligned_addend   (aligned_addend),
-        .sticky           (sticky),
-        .aligned_exponent (aligned_exponent),
-        .product_sign     (product_sign),
-        .c_sign           (c_sign),
+        .aligned_product  (aligner_to_addsub_q.aligned_product),
+        .aligned_addend   (aligner_to_addsub_q.aligned_addend),
+        .sticky           (aligner_to_addsub_q.sticky),
+        .aligned_exponent (aligner_to_addsub_q.aligned_exponent),
+        .product_sign     (aligner_to_addsub_q.product_sign),
+        .c_sign           (aligner_to_addsub_q.c_sign),
         .sum              (sum),
         .sum_sign         (sum_sign),
         .sum_exponent     (sum_exponent),
@@ -118,10 +155,10 @@ module bf16_fma_core
 
     bf16_normalizer normalizer 
     (
-        .sum              (sum),
-        .sum_sign         (sum_sign),
-        .sum_exponent     (sum_exponent),
-        .sum_sticky       (sum_sticky),
+        .sum              (addsub_to_normalizer_q.sum),
+        .sum_sign         (addsub_to_normalizer_q.sum_sign),
+        .sum_exponent     (addsub_to_normalizer_q.sum_exponent),
+        .sum_sticky       (addsub_to_normalizer_q.sum_sticky),
         .norm_significand (norm_significand),
         .guard            (guard),
         .sticky           (round_sticky),
@@ -143,7 +180,45 @@ module bf16_fma_core
         .rounded_result   (rounded_result)
     );
 
-    assign fma_result = bypass_arithmetic ? fma_flag_result : rounded_result;
+    logic [15:0] selected_result;
+    assign selected_result = addsub_to_normalizer_q.bypass_arithmetic ? 
+                                 addsub_to_normalizer_q.fma_flag_result : 
+                                 rounded_result;
+
+    // Pipeline register 
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            aligner_to_addsub_q    <= '0;
+            addsub_to_normalizer_q <= '0;
+            fma_result             <= '0;
+            fma_result_valid       <= '0;
+        end
+        else begin
+            // First boundary (decoder, multiplier, aligner)
+            aligner_to_addsub_q.valid             <= operands_valid;
+            aligner_to_addsub_q.aligned_product   <= aligned_product;
+            aligner_to_addsub_q.aligned_addend    <= aligned_addend;
+            aligner_to_addsub_q.sticky            <= sticky;
+            aligner_to_addsub_q.aligned_exponent  <= aligned_exponent;
+            aligner_to_addsub_q.product_sign      <= product_sign;
+            aligner_to_addsub_q.c_sign            <= c_sign;
+            aligner_to_addsub_q.bypass_arithmetic <= bypass_arithmetic;
+            aligner_to_addsub_q.fma_flag_result   <= fma_flag_result;
+
+            // Second boundary (addsub)
+            addsub_to_normalizer_q.valid             <= aligner_to_addsub_q.valid;
+            addsub_to_normalizer_q.sum               <= sum;
+            addsub_to_normalizer_q.sum_sign          <= sum_sign;
+            addsub_to_normalizer_q.sum_exponent      <= sum_exponent;
+            addsub_to_normalizer_q.sum_sticky        <= sum_sticky;
+            addsub_to_normalizer_q.bypass_arithmetic <= aligner_to_addsub_q.bypass_arithmetic;
+            addsub_to_normalizer_q.fma_flag_result   <= aligner_to_addsub_q.fma_flag_result;
+
+            // Third boundary (normalizer, rounder)
+            fma_result       <= selected_result;
+            fma_result_valid <= addsub_to_normalizer_q.valid; 
+        end
+    end
     
 endmodule
 

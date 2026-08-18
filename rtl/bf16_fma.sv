@@ -25,32 +25,36 @@ module bf16_fma
 
     logic [15:0] a, b, c;
     logic [15:0] fma_result;
-    /* verilator lint_off UNUSEDSIGNAL */
-    logic operands_valid; // Kept for future load valid control possibility
-    /* verilator lint_on UNUSEDSIGNAL */
+    logic        fma_result_valid;
+    logic        operands_valid;
 
     // IO sequencer to deserialize inputs and serialize the result
     bf16_fma_io io
     (
-        .clk            (clk),
-        .rst_n          (rst_n),
-        .in_data        (in_data),
-        .a              (a),
-        .b              (b),
-        .c              (c),
-        .operands_valid (operands_valid),
-        .fma_result     (fma_result),
-        .out_data       (out_data),
-        .result_valid   (result_valid)
+        .clk              (clk),
+        .rst_n            (rst_n),
+        .in_data          (in_data),
+        .a                (a),
+        .b                (b),
+        .c                (c),
+        .operands_valid   (operands_valid),
+        .fma_result       (fma_result),
+        .fma_result_valid (fma_result_valid),
+        .out_data         (out_data),
+        .result_valid     (result_valid)
     );
 
-    // FMA unit
+    // FMA core unit
     bf16_fma_core core
     (
-        .a          (a),
-        .b          (b),
-        .c          (c),
-        .fma_result (fma_result)
+        .clk              (clk),
+        .rst_n            (rst_n),
+        .operands_valid   (operands_valid),
+        .a                (a),
+        .b                (b),
+        .c                (c),
+        .fma_result       (fma_result),
+        .fma_result_valid (fma_result_valid)
     );
 
 endmodule
