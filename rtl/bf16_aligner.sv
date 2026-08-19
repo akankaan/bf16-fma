@@ -71,13 +71,14 @@ module bf16_aligner
     assign c_anchor_exp = $signed({2'b0, c_exponent}) - SHIFT_CONST;
 
     // Product itself, or 0 when c dominates (product then survives only as sticky)
-    assign aligned_product  = c_dominates ? 26'b0        : {10'b0, product};
+    assign aligned_product  = c_dominates ? 26'b0         : {10'b0, product};
     // Parked c when it dominates, else shifted right into place
-    assign aligned_addend   = c_dominates ? c_home       : (c_home >> shift);
-    // OR of product bits when c dominates, else the OR of addend bits shifted off the bottom
-    assign sticky           = c_dominates ? |product     : |(c_home & ((26'b1 << shift) - 1));
+    assign aligned_addend   = c_dominates ? c_home        : (c_home >> shift);
+    // When c dominates, any nonzero product bit sets sticky high, which is !product_zero
+    // Else, sticky is the OR of addend bits shifted off the bottom.
+    assign sticky           = c_dominates ? !product_zero : |(c_home & ((26'b1 << shift) - 1));
     // c's anchor when it dominates, else the product exponent
-    assign aligned_exponent = c_dominates ? c_anchor_exp : product_exponent;
+    assign aligned_exponent = c_dominates ? c_anchor_exp  : product_exponent;
 
 endmodule
 
