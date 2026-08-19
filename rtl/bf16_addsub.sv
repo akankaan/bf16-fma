@@ -3,7 +3,7 @@
 // Date  : August 3, 2026
 // Author: Kaan Akan
 //
-// Adds or subtracts the aligned product and addend in two's complement.
+// Adds or subtracts the aligned product and addend in sign-magnitude
 //
 // ================================================================
 
@@ -33,20 +33,30 @@ module bf16_addsub
     logic  effective_subtraction;
     assign effective_subtraction = c_sign ^ product_sign;
 
-    // Take magnitude to two's complement, 28th bit is for possible carry in addition
-    logic signed [27:0] signed_product, signed_addend, signed_sum;
-    assign signed_product = product_sign ? -$signed({2'b0, aligned_product}) : 
-                                            $signed({2'b0, aligned_product});
-
-    assign signed_addend = c_sign ? -$signed({2'b0, aligned_addend}) : 
-                                     $signed({2'b0, aligned_addend});
-
-    assign signed_sum = signed_product + signed_addend;
-    assign sum_sign   = signed_sum[27];
-
-    // Take absolute value at full width, then narrow to 27-bit
     logic [26:0] magnitude;
-    assign magnitude = 27'(sum_sign ? -signed_sum : signed_sum);
+    
+    always_comb begin
+        // Same signs so add magnitude and keep common sign
+        if (!effective_subtraction) begin
+            magnitude = {1'b0, aligned_product} + {1'b0, aligned_addend};
+            sum_sign  = c_sign && product_sign;
+        end
+        // Different signs, addend larger, so sub magnitude and keep addend's sign
+        else if (aligned_addend > aligned_product) begin
+            magnitude = {1'b0, aligned_addend} - {1'b0, aligned_product};
+            sum_sign  = c_sign;
+        end
+        // Different signs, product larger, so sub magnitude and keep product's sign
+        else if (aligned_addend < aligned_product) begin
+            magnitude = {1'b0, aligned_product} - {1'b0, aligned_addend};
+            sum_sign  = product_sign;
+        end
+        // Exact cancellation
+        else begin
+            magnitude = '0;
+            sum_sign  = c_sign && product_sign;
+        end
+    end
 
     // On a subtract, we took away too little when there is a sticky
     // which makes the magnitude land a bit high, so take it down by one.

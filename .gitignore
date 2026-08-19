@@ -6,6 +6,9 @@ sim/*
 # Generated simulation vectors
 /tb/vectors/*.txt
 
+# Local synthesis results
+/SYNTHESIS_RESULTS.md
+
 # Python
 __pycache__/
 *.pyc

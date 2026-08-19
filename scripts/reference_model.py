@@ -222,8 +222,9 @@ def addsub_ref(aligned_product, aligned_addend, sticky, aligned_exponent,
     signed_addend  = -aligned_addend  if c_sign       else aligned_addend
     signed_sum     = signed_product + signed_addend
 
-    sum_sign = 1 if (signed_sum < 0) else 0
     magnitude = abs(signed_sum)
+    # Sign is negative for negative numbers and zero that came from -0 + -0
+    sum_sign = 1 if (signed_sum < 0 or ((signed_sum == 0) and (product_sign and c_sign))) else 0
 
     # Borrow using subtrahend sticky during effective subtraction
     effective_subtraction = product_sign ^ c_sign

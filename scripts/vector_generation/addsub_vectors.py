@@ -18,6 +18,14 @@ def addsub_directed_vectors():
         (0xAAAA, 0xAA, 0, 120, 1, 1),    
     ])
 
+    # Zeros
+    vectors.extend([
+        (0x0000000, 0x0000000, 0, 120, 0, 0),
+        (0x0000000, 0x0000000, 0, 120, 0, 1),
+        (0x0000000, 0x0000000, 0, 120, 1, 0),
+        (0x0000000, 0x0000000, 0, 120, 1, 1),  
+    ])
+
     # Cancellations
     vectors.extend([
         # Exact
