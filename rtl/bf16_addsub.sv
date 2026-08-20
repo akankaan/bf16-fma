@@ -13,14 +13,15 @@
 (* keep_hierarchy *)
 module bf16_addsub
 (
-    // Ordered magnitudes and controls from addsub prepare
-    input  logic [25:0]        larger_magnitude,
-    input  logic [25:0]        smaller_magnitude,
+    // Operand ordering and controls from addsub prepare
+    input  logic               aligned_addend_greater,
     input  logic               effective_subtraction,
     input  logic               result_sign,
     input  logic               subtract_correction,
 
-    // Exponent and sticky from the aligner
+    // Operands, exponent, and sticky from the aligner
+    input  logic [25:0]        aligned_product,
+    input  logic [25:0]        aligned_addend,
     input  logic               sticky,
     input  logic signed [9:0]  aligned_exponent,
 
@@ -35,10 +36,15 @@ module bf16_addsub
     
     always_comb begin
         if (effective_subtraction) begin
-            magnitude = {1'b0, larger_magnitude} - {1'b0, smaller_magnitude};
+            if (aligned_addend_greater) begin
+                magnitude = {1'b0, aligned_addend} - {1'b0, aligned_product};
+            end
+            else begin
+                magnitude = {1'b0, aligned_product} - {1'b0, aligned_addend};
+            end
         end
         else begin
-            magnitude = {1'b0, larger_magnitude} + {1'b0, smaller_magnitude};
+            magnitude = {1'b0, aligned_addend} + {1'b0, aligned_product};
         end
     end
 

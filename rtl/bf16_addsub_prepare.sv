@@ -22,9 +22,8 @@ module bf16_addsub_prepare
     input  logic        product_sign,
     input  logic        c_sign,
 
-    // Ordered magnitudes and controls for addsub
-    output logic [25:0] larger_magnitude,
-    output logic [25:0] smaller_magnitude,
+    // Controls for addsub
+    output logic        aligned_addend_greater,
     output logic        effective_subtraction,
     output logic        result_sign,
     output logic        subtract_correction
@@ -32,32 +31,24 @@ module bf16_addsub_prepare
 
     // If the product and addend signs disagree, the add is effectively a subtraction
     assign effective_subtraction = c_sign ^ product_sign;
+    assign aligned_addend_greater = aligned_addend > aligned_product;
 
     always_comb begin
-        // Same signs so add magnitude and keep common sign;
-        // ordering doesn't matter for addition
+        // Same signs so add magnitude and keep common sign; ordering unimportant
         if (!effective_subtraction) begin
-            larger_magnitude  = aligned_addend;
-            smaller_magnitude = aligned_product;
-            result_sign       = c_sign && product_sign;
+            result_sign = c_sign && product_sign;
         end
         // Different signs, addend larger, so keep addend's sign
-        else if (aligned_addend > aligned_product) begin
-            larger_magnitude  = aligned_addend;
-            smaller_magnitude = aligned_product;
-            result_sign       = c_sign;
+        else if (aligned_addend_greater) begin
+            result_sign = c_sign;
         end
-        // Different signs, product larger, so sub magnitude and keep product's sign
+        // Different signs, product larger, so keep product's sign
         else if (aligned_addend < aligned_product) begin
-            larger_magnitude  = aligned_product;
-            smaller_magnitude = aligned_addend;
-            result_sign       = product_sign;
+            result_sign = product_sign;
         end
-        // Exact cancellation, send zeros
+        // Exact cancellation; ordering unimportant
         else begin
-            larger_magnitude  = '0;
-            smaller_magnitude = '0;
-            result_sign       = c_sign && product_sign;
+            result_sign = c_sign && product_sign;
         end
     end
 

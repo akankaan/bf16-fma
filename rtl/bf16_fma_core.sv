@@ -46,8 +46,9 @@ module bf16_fma_core
     typedef struct packed {
         logic               valid;
 
-        logic [25:0]        larger_magnitude;
-        logic [25:0]        smaller_magnitude;
+        logic [25:0]        aligned_product;
+        logic [25:0]        aligned_addend;
+        logic               aligned_addend_greater;
         logic               effective_subtraction;
         logic               result_sign;
         logic               subtract_correction;
@@ -162,11 +163,10 @@ module bf16_fma_core
         .aligned_exponent (aligned_exponent)
     );
 
-    logic [25:0] larger_magnitude;
-    logic [25:0] smaller_magnitude;
-    logic        effective_subtraction;
-    logic        result_sign;
-    logic        subtract_correction;
+    logic aligned_addend_greater;
+    logic effective_subtraction;
+    logic result_sign;
+    logic subtract_correction;
 
     bf16_addsub_prepare addsub_prepare
     (
@@ -175,8 +175,7 @@ module bf16_fma_core
         .sticky                (sticky),
         .product_sign          (multiplier_to_aligner_q.product_sign),
         .c_sign                (multiplier_to_aligner_q.c_sign),
-        .larger_magnitude      (larger_magnitude),
-        .smaller_magnitude     (smaller_magnitude),
+        .aligned_addend_greater(aligned_addend_greater),
         .effective_subtraction (effective_subtraction),
         .result_sign           (result_sign),
         .subtract_correction   (subtract_correction)
@@ -189,17 +188,18 @@ module bf16_fma_core
 
     bf16_addsub addsub 
     (
-        .larger_magnitude      (addsub_prepare_to_addsub_q.larger_magnitude),
-        .smaller_magnitude     (addsub_prepare_to_addsub_q.smaller_magnitude),
+        .aligned_addend_greater(addsub_prepare_to_addsub_q.aligned_addend_greater),
         .effective_subtraction (addsub_prepare_to_addsub_q.effective_subtraction),
         .result_sign           (addsub_prepare_to_addsub_q.result_sign),
         .subtract_correction   (addsub_prepare_to_addsub_q.subtract_correction),
-        .sticky                (addsub_prepare_to_addsub_q.sticky),
-        .aligned_exponent      (addsub_prepare_to_addsub_q.aligned_exponent),
-        .sum                   (sum),
-        .sum_sign              (sum_sign),
-        .sum_exponent          (sum_exponent),
-        .sum_sticky            (sum_sticky)
+        .aligned_product      (addsub_prepare_to_addsub_q.aligned_product),
+        .aligned_addend       (addsub_prepare_to_addsub_q.aligned_addend),
+        .sticky               (addsub_prepare_to_addsub_q.sticky),
+        .aligned_exponent     (addsub_prepare_to_addsub_q.aligned_exponent),
+        .sum                  (sum),
+        .sum_sign             (sum_sign),
+        .sum_exponent         (sum_exponent),
+        .sum_sticky           (sum_sticky)
     );
 
     logic [7:0]         norm_significand;
@@ -267,8 +267,9 @@ module bf16_fma_core
 
             // Second boundary (aligner, addsub prepare)
             addsub_prepare_to_addsub_q.valid                 <= multiplier_to_aligner_q.valid;
-            addsub_prepare_to_addsub_q.larger_magnitude      <= larger_magnitude;
-            addsub_prepare_to_addsub_q.smaller_magnitude     <= smaller_magnitude;
+            addsub_prepare_to_addsub_q.aligned_product       <= aligned_product;
+            addsub_prepare_to_addsub_q.aligned_addend        <= aligned_addend;
+            addsub_prepare_to_addsub_q.aligned_addend_greater <= aligned_addend_greater;
             addsub_prepare_to_addsub_q.effective_subtraction <= effective_subtraction;
             addsub_prepare_to_addsub_q.result_sign           <= result_sign;
             addsub_prepare_to_addsub_q.subtract_correction   <= subtract_correction;
