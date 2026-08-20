@@ -5,6 +5,7 @@ fma_core:
 		rtl/bf16_multiplier.sv \
 		rtl/bf16_aligner.sv \
 		rtl/bf16_addsub.sv \
+		rtl/bf16_addsub_prepare.sv \
 		rtl/bf16_normalizer.sv \
 		rtl/bf16_rounder.sv \
 		rtl/bf16_fma_core.sv \
@@ -37,6 +38,7 @@ addsub:
 	iverilog -g2012 -s bf16_addsub_tb \
 		-o sim/addsub_tb \
 		rtl/bf16_addsub.sv \
+		rtl/bf16_addsub_prepare.sv \
 		tb/bf16_addsub_tb.sv
 	vvp sim/addsub_tb
 
@@ -84,6 +86,7 @@ fma:
 		rtl/bf16_multiplier.sv \
 		rtl/bf16_aligner.sv \
 		rtl/bf16_addsub.sv \
+		rtl/bf16_addsub_prepare.sv \
 		rtl/bf16_normalizer.sv \
 		rtl/bf16_rounder.sv \
 		rtl/bf16_fma_core.sv \

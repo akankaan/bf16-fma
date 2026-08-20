@@ -4,6 +4,7 @@
 // Author: Kaan Akan
 //
 // Testbench for Bfloat16 FMA (Fused Multiply Add) unit add/subtract
+// combined with its preparation unit
 //
 // ================================================================
 
@@ -12,30 +13,51 @@
 
 module bf16_addsub_tb;
 
-    logic [25:0]        aligned_product;
-    logic [25:0]        aligned_addend;
-    logic               sticky;
+    logic [25:0]  aligned_product;
+    logic [25:0]  aligned_addend;
+    logic         sticky;
+    logic         product_sign;
+    logic         c_sign;
+    logic [25:0] larger_magnitude;
+    logic [25:0] smaller_magnitude;
+    logic        effective_subtraction;
+    logic        result_sign;
+    logic        subtract_correction;
+
+    bf16_addsub_prepare dut1
+    (
+        .aligned_product       (aligned_product),
+        .aligned_addend        (aligned_addend),
+        .sticky                (sticky),
+        .product_sign          (product_sign),
+        .c_sign                (c_sign),
+        .larger_magnitude      (larger_magnitude),
+        .smaller_magnitude     (smaller_magnitude),
+        .effective_subtraction (effective_subtraction),
+        .result_sign           (result_sign),
+        .subtract_correction   (subtract_correction)
+    );
+
     logic signed [9:0]  aligned_exponent;
-    logic               product_sign;
-    logic               c_sign;
 
     logic [26:0]        sum;
     logic               sum_sign;
     logic signed [9:0]  sum_exponent;
     logic               sum_sticky;
 
-    bf16_addsub dut 
+    bf16_addsub dut2 
     (
-        .aligned_product  (aligned_product),
-        .aligned_addend   (aligned_addend),
-        .sticky           (sticky),
-        .aligned_exponent (aligned_exponent),
-        .product_sign     (product_sign),
-        .c_sign           (c_sign),
-        .sum              (sum),
-        .sum_sign         (sum_sign),
-        .sum_exponent     (sum_exponent),
-        .sum_sticky       (sum_sticky)
+        .larger_magnitude      (larger_magnitude),
+        .smaller_magnitude     (smaller_magnitude),
+        .effective_subtraction (effective_subtraction),
+        .result_sign           (result_sign),
+        .subtract_correction   (subtract_correction),
+        .sticky                (sticky),
+        .aligned_exponent      (aligned_exponent),
+        .sum                   (sum),
+        .sum_sign              (sum_sign),
+        .sum_exponent          (sum_exponent),
+        .sum_sticky            (sum_sticky)
     );
 
     integer num_vectors, num_errors;
