@@ -71,9 +71,24 @@ module bf16_fma_core
         logic [15:0]        fma_flag_result;
     } addsub_to_normalizer_t;
 
+    typedef struct packed {
+        logic               valid;
+
+        logic [7:0]         norm_significand;
+        logic               guard;
+        logic               sticky;
+        logic signed [9:0]  norm_exponent;
+        logic               norm_sign;
+        logic               is_zero;
+
+        logic               bypass_arithmetic;
+        logic [15:0]        fma_flag_result;
+    } normalizer_to_rounder_t;
+
     addsub_prepare_to_addsub_t addsub_prepare_to_addsub_q;
     addsub_to_normalizer_t     addsub_to_normalizer_q;
     multiplier_to_aligner_t    multiplier_to_aligner_q;
+    normalizer_to_rounder_t    normalizer_to_rounder_q;
 
     // Main FMA implementation starts here
     logic a_sign, b_sign, c_sign;
@@ -212,18 +227,18 @@ module bf16_fma_core
 
     bf16_rounder rounder
     (
-        .norm_significand (norm_significand),
-        .guard            (guard),
-        .sticky           (round_sticky),
-        .norm_exponent    (norm_exponent),
-        .norm_sign        (norm_sign),
-        .is_zero          (is_zero),
+        .norm_significand (normalizer_to_rounder_q.norm_significand),
+        .guard            (normalizer_to_rounder_q.guard),
+        .sticky           (normalizer_to_rounder_q.sticky),
+        .norm_exponent    (normalizer_to_rounder_q.norm_exponent),
+        .norm_sign        (normalizer_to_rounder_q.norm_sign),
+        .is_zero          (normalizer_to_rounder_q.is_zero),
         .rounded_result   (rounded_result)
     );
 
     logic [15:0] selected_result;
-    assign selected_result = addsub_to_normalizer_q.bypass_arithmetic ? 
-                             addsub_to_normalizer_q.fma_flag_result : 
+    assign selected_result = normalizer_to_rounder_q.bypass_arithmetic ?
+                             normalizer_to_rounder_q.fma_flag_result :
                              rounded_result;
 
     // Pipeline register 
@@ -232,6 +247,7 @@ module bf16_fma_core
             multiplier_to_aligner_q <= '0;
             addsub_prepare_to_addsub_q <= '0;
             addsub_to_normalizer_q     <= '0;
+            normalizer_to_rounder_q    <= '0;
             fma_result                 <= '0;
             fma_result_valid           <= '0;
         end
@@ -270,9 +286,20 @@ module bf16_fma_core
             addsub_to_normalizer_q.bypass_arithmetic  <= addsub_prepare_to_addsub_q.bypass_arithmetic;
             addsub_to_normalizer_q.fma_flag_result    <= addsub_prepare_to_addsub_q.fma_flag_result;
 
-            // Fourth boundary (normalizer, rounder)
+            // Fourth boundary (normalizer)
+            normalizer_to_rounder_q.valid             <= addsub_to_normalizer_q.valid;
+            normalizer_to_rounder_q.norm_significand  <= norm_significand;
+            normalizer_to_rounder_q.guard             <= guard;
+            normalizer_to_rounder_q.sticky            <= round_sticky;
+            normalizer_to_rounder_q.norm_exponent     <= norm_exponent;
+            normalizer_to_rounder_q.norm_sign         <= norm_sign;
+            normalizer_to_rounder_q.is_zero           <= is_zero;
+            normalizer_to_rounder_q.bypass_arithmetic <= addsub_to_normalizer_q.bypass_arithmetic;
+            normalizer_to_rounder_q.fma_flag_result   <= addsub_to_normalizer_q.fma_flag_result;
+
+            // Fifth boundary (rounder)
             fma_result       <= selected_result;
-            fma_result_valid <= addsub_to_normalizer_q.valid; 
+            fma_result_valid <= normalizer_to_rounder_q.valid;
         end
     end
     
