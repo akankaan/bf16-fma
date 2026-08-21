@@ -29,6 +29,27 @@ module bf16_fma_core
     typedef struct packed {
         logic               valid;
 
+        logic               a_sign;
+        logic               b_sign;
+        logic               a_zero;
+        logic               b_zero;
+        logic [7:0]         a_exponent;
+        logic [7:0]         b_exponent;
+        logic [6:0]         a_fraction;
+        logic [6:0]         b_fraction;
+
+        logic               c_zero;
+        logic [7:0]         c_exponent;
+        logic [6:0]         c_fraction;
+        logic               c_sign;
+
+        logic               bypass_arithmetic;
+        logic [15:0]        fma_flag_result;
+    } decode_classify_to_multiplier_t;
+
+    typedef struct packed {
+        logic               valid;
+
         logic [15:0]        product;
         logic               product_zero;
         logic signed [9:0]  product_exponent;
@@ -86,10 +107,11 @@ module bf16_fma_core
         logic [15:0]        fma_flag_result;
     } normalizer_to_rounder_t;
 
-    addsub_prepare_to_addsub_t addsub_prepare_to_addsub_q;
-    addsub_to_normalizer_t     addsub_to_normalizer_q;
-    multiplier_to_aligner_t    multiplier_to_aligner_q;
-    normalizer_to_rounder_t    normalizer_to_rounder_q;
+    decode_classify_to_multiplier_t  decode_classify_to_multiplier_q;
+    multiplier_to_aligner_t          multiplier_to_aligner_q;
+    addsub_prepare_to_addsub_t       addsub_prepare_to_addsub_q;
+    addsub_to_normalizer_t           addsub_to_normalizer_q;
+    normalizer_to_rounder_t          normalizer_to_rounder_q;
 
     // Main FMA implementation starts here
     logic a_sign, b_sign, c_sign;
@@ -130,14 +152,14 @@ module bf16_fma_core
 
     bf16_multiplier multiplier 
     (
-        .a_sign            (a_sign),
-        .b_sign            (b_sign),
-        .a_zero            (a_zero),
-        .b_zero            (b_zero),
-        .a_exponent        (a_exponent),
-        .b_exponent        (b_exponent),
-        .a_fraction        (a_fraction),
-        .b_fraction        (b_fraction),
+        .a_sign            (decode_classify_to_multiplier_q.a_sign),
+        .b_sign            (decode_classify_to_multiplier_q.b_sign),
+        .a_zero            (decode_classify_to_multiplier_q.a_zero),
+        .b_zero            (decode_classify_to_multiplier_q.b_zero),
+        .a_exponent        (decode_classify_to_multiplier_q.a_exponent),
+        .b_exponent        (decode_classify_to_multiplier_q.b_exponent),
+        .a_fraction        (decode_classify_to_multiplier_q.a_fraction),
+        .b_fraction        (decode_classify_to_multiplier_q.b_fraction),
         .product_sign      (product_sign),
         .product_zero      (product_zero),
         .product           (product),
@@ -244,41 +266,59 @@ module bf16_fma_core
     // Pipeline register 
     always_ff @(posedge clk) begin
         if (!rst_n) begin
-            multiplier_to_aligner_q <= '0;
-            addsub_prepare_to_addsub_q <= '0;
-            addsub_to_normalizer_q     <= '0;
-            normalizer_to_rounder_q    <= '0;
-            fma_result                 <= '0;
-            fma_result_valid           <= '0;
+            decode_classify_to_multiplier_q <= '0;
+            multiplier_to_aligner_q         <= '0;
+            addsub_prepare_to_addsub_q       <= '0;
+            addsub_to_normalizer_q           <= '0;
+            normalizer_to_rounder_q          <= '0;
+            fma_result                       <= '0;
+            fma_result_valid                 <= '0;
         end
         else begin
-            // First boundary (decoder, multiplier)
-            multiplier_to_aligner_q.valid             <= operands_valid;
+            // First boundary (decode and classify)
+            decode_classify_to_multiplier_q.valid             <= operands_valid;
+            decode_classify_to_multiplier_q.a_sign            <= a_sign;
+            decode_classify_to_multiplier_q.b_sign            <= b_sign;
+            decode_classify_to_multiplier_q.a_zero            <= a_zero;
+            decode_classify_to_multiplier_q.b_zero            <= b_zero;
+            decode_classify_to_multiplier_q.a_exponent        <= a_exponent;
+            decode_classify_to_multiplier_q.b_exponent        <= b_exponent;
+            decode_classify_to_multiplier_q.a_fraction        <= a_fraction;
+            decode_classify_to_multiplier_q.b_fraction        <= b_fraction;
+            decode_classify_to_multiplier_q.c_zero            <= c_zero;
+            decode_classify_to_multiplier_q.c_exponent        <= c_exponent;
+            decode_classify_to_multiplier_q.c_fraction        <= c_fraction;
+            decode_classify_to_multiplier_q.c_sign            <= c_sign;
+            decode_classify_to_multiplier_q.bypass_arithmetic <= bypass_arithmetic;
+            decode_classify_to_multiplier_q.fma_flag_result   <= fma_flag_result;
+
+            // Second boundary (multiplier)
+            multiplier_to_aligner_q.valid             <= decode_classify_to_multiplier_q.valid;
             multiplier_to_aligner_q.product           <= product;
             multiplier_to_aligner_q.product_zero      <= product_zero;
             multiplier_to_aligner_q.product_exponent  <= product_exponent;
             multiplier_to_aligner_q.product_sign      <= product_sign;
-            multiplier_to_aligner_q.c_zero            <= c_zero;
-            multiplier_to_aligner_q.c_exponent        <= c_exponent;
-            multiplier_to_aligner_q.c_fraction        <= c_fraction;
-            multiplier_to_aligner_q.c_sign            <= c_sign;
-            multiplier_to_aligner_q.bypass_arithmetic <= bypass_arithmetic;
-            multiplier_to_aligner_q.fma_flag_result   <= fma_flag_result;
+            multiplier_to_aligner_q.c_zero            <= decode_classify_to_multiplier_q.c_zero;
+            multiplier_to_aligner_q.c_exponent        <= decode_classify_to_multiplier_q.c_exponent;
+            multiplier_to_aligner_q.c_fraction        <= decode_classify_to_multiplier_q.c_fraction;
+            multiplier_to_aligner_q.c_sign            <= decode_classify_to_multiplier_q.c_sign;
+            multiplier_to_aligner_q.bypass_arithmetic <= decode_classify_to_multiplier_q.bypass_arithmetic;
+            multiplier_to_aligner_q.fma_flag_result   <= decode_classify_to_multiplier_q.fma_flag_result;
 
-            // Second boundary (aligner, addsub prepare)
-            addsub_prepare_to_addsub_q.valid                 <= multiplier_to_aligner_q.valid;
-            addsub_prepare_to_addsub_q.aligned_product       <= aligned_product;
-            addsub_prepare_to_addsub_q.aligned_addend        <= aligned_addend;
+            // Third boundary (aligner, addsub prepare)
+            addsub_prepare_to_addsub_q.valid                  <= multiplier_to_aligner_q.valid;
+            addsub_prepare_to_addsub_q.aligned_product        <= aligned_product;
+            addsub_prepare_to_addsub_q.aligned_addend         <= aligned_addend;
             addsub_prepare_to_addsub_q.aligned_addend_greater <= aligned_addend_greater;
-            addsub_prepare_to_addsub_q.effective_subtraction <= effective_subtraction;
-            addsub_prepare_to_addsub_q.result_sign           <= result_sign;
-            addsub_prepare_to_addsub_q.subtract_correction   <= subtract_correction;
-            addsub_prepare_to_addsub_q.sticky                <= sticky;
-            addsub_prepare_to_addsub_q.aligned_exponent      <= aligned_exponent;
-            addsub_prepare_to_addsub_q.bypass_arithmetic     <= multiplier_to_aligner_q.bypass_arithmetic;
-            addsub_prepare_to_addsub_q.fma_flag_result       <= multiplier_to_aligner_q.fma_flag_result;
+            addsub_prepare_to_addsub_q.effective_subtraction  <= effective_subtraction;
+            addsub_prepare_to_addsub_q.result_sign            <= result_sign;
+            addsub_prepare_to_addsub_q.subtract_correction    <= subtract_correction;
+            addsub_prepare_to_addsub_q.sticky                 <= sticky;
+            addsub_prepare_to_addsub_q.aligned_exponent       <= aligned_exponent;
+            addsub_prepare_to_addsub_q.bypass_arithmetic      <= multiplier_to_aligner_q.bypass_arithmetic;
+            addsub_prepare_to_addsub_q.fma_flag_result        <= multiplier_to_aligner_q.fma_flag_result;
 
-            // Third boundary (addsub)
+            // Fourth boundary (addsub)
             addsub_to_normalizer_q.valid              <= addsub_prepare_to_addsub_q.valid;
             addsub_to_normalizer_q.sum                <= sum;
             addsub_to_normalizer_q.sum_sign           <= sum_sign;
@@ -287,7 +327,7 @@ module bf16_fma_core
             addsub_to_normalizer_q.bypass_arithmetic  <= addsub_prepare_to_addsub_q.bypass_arithmetic;
             addsub_to_normalizer_q.fma_flag_result    <= addsub_prepare_to_addsub_q.fma_flag_result;
 
-            // Fourth boundary (normalizer)
+            // Fifth boundary (normalizer)
             normalizer_to_rounder_q.valid             <= addsub_to_normalizer_q.valid;
             normalizer_to_rounder_q.norm_significand  <= norm_significand;
             normalizer_to_rounder_q.guard             <= guard;
@@ -298,7 +338,7 @@ module bf16_fma_core
             normalizer_to_rounder_q.bypass_arithmetic <= addsub_to_normalizer_q.bypass_arithmetic;
             normalizer_to_rounder_q.fma_flag_result   <= addsub_to_normalizer_q.fma_flag_result;
 
-            // Fifth boundary (rounder)
+            // Sixth boundary (rounder)
             fma_result       <= selected_result;
             fma_result_valid <= normalizer_to_rounder_q.valid;
         end
