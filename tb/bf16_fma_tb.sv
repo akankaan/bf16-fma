@@ -53,7 +53,7 @@ module bf16_fma_tb;
             end
 
             // Reset before each vector file
-            rst_n = 0; in_data = '0;
+            rst_n = 0; in_data = '0; in_valid = 1'b0;
             repeat (2) @(posedge clk);
             first_cycle = 1'b1;
 
@@ -72,6 +72,9 @@ module bf16_fma_tb;
                     @(negedge clk); in_data = c;
                 end
             end
+
+            @(negedge clk);
+            in_valid = 1'b0;
 
             $fclose(file);
 

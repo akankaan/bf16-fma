@@ -15,7 +15,7 @@
 //
 // Normally everything is anchored to the product except when c dominates the result,
 // meaning only the sticky bit of the product can influence the result in an exact tie.
-// This happnes when the product is zero, or the shift is negative; in which case
+// This happens when the product is zero, or the shift is negative; in which case
 // c sets the result and the exponent re-anchors to c.
 //
 // ================================================================

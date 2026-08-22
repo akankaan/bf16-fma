@@ -38,7 +38,7 @@ def rounder_directed_vectors():
     # Overflow 
     vectors.extend([
         (0xFF, 0, 0, 254, 0, 0), # maximum finite, no rounding
-        (0xFF, 1, 0, 254, 0, 0), # maximum mangitude positive finite becomes +inf with rounding
+        (0xFF, 1, 0, 254, 0, 0), # maximum magnitude positive finite becomes +inf with rounding
         (0xFF, 1, 0, 254, 1, 0), # maximum magnitude negative finite becomes -inf with rounding
         (0x80, 0, 0, 255, 0, 0), # exponent is already overflown without rounding 
     ])

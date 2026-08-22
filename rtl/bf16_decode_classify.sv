@@ -88,13 +88,13 @@ module bf16_decode_classify
             bypass_arithmetic = 1'b1;
             fma_flag_result   = 16'h7FC0;
         end
-        // Return inf, with appopriate sign, when at least one multiplicand is inf.
+        // Return inf, with appropriate sign, when at least one multiplicand is inf.
         // c is either finite or same signed inf due to previous else if
         else if (a_inf || b_inf) begin
             bypass_arithmetic = 1'b1;
             fma_flag_result   = {multiplication_sign, 8'hFF, 7'd0};
         end
-        // Return inf, with appopriate sign, when addend is inf, multiplicands are finite
+        // Return inf, with appropriate sign, when addend is inf, multiplicands are finite
         else if (c_inf) begin
             bypass_arithmetic = 1'b1;
             fma_flag_result   = {c_sign, 8'hFF, 7'd0};

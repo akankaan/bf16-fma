@@ -35,7 +35,7 @@ module bf16_rounder
     logic  rounding_carry;
     assign rounding_carry = (round_up && (norm_significand == 8'hFF));
 
-    // Post-normalize after possible rounding caused overlfow
+    // Post-normalize after possible rounding caused overflow
     logic signed [9:0] exponent_final;
     logic        [6:0] fraction;
     assign exponent_final = norm_exponent + $signed({9'b0, rounding_carry}); 
@@ -47,7 +47,7 @@ module bf16_rounder
             rounded_result = {norm_sign, 15'b0}; // zero or denormals flushed
         end
         else if (exponent_final >= 255) begin
-            rounded_result = {norm_sign, 8'hFF, 7'b0}; // overlfow gets signed infinity
+            rounded_result = {norm_sign, 8'hFF, 7'b0}; // overflow gets signed infinity
         end
         else begin
             rounded_result = {norm_sign, exponent_final[7:0], fraction}; // non-flagged

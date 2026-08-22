@@ -13,7 +13,7 @@ from vector_generation import multiplier_vectors
 from vector_generation import normalizer_vectors
 from vector_generation import rounder_vectors
 
-FMA_RANDOM_COUNT             = 100000
+FMA_RANDOM_COUNT             = 1000000
 DECODE_CLASSIFY_RANDOM_COUNT = 100000
 MUL_RANDOM_COUNT             = 100000
 ALIGNER_RANDOM_COUNT         = 100000

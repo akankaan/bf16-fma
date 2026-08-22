@@ -78,7 +78,7 @@ def round_exact_to_bf16(sign_bit: int, magnitude: Fraction):
 
     # If remainder between exact and floored significand is more than half ulp, round up.
     # If remainder is exactly half an ulp and last digit is 1, round up as ties break to even.
-    # For remaining cases, floored (meaning already round down) is appopriate.
+    # For remaining cases, floored (meaning already round down) is appropriate.
     if ((remainder > Fraction(1,2)) or 
        ((remainder == Fraction(1,2)) and (fraction_floor  & (0b1)))):
         fraction_floor = fraction_floor + 1
@@ -132,11 +132,11 @@ def decode_classify_ref(a, b, c):
     # Result is NaN when inf multiplication's sign doesn't match infinite addend's sign
     elif ((a_inf or b_inf) and (c_inf) and ((a_sign ^ b_sign) != c_sign)):
         fma_flag_result = 0x7FC0
-    # Result is inf, with appopriate sign, when at least one multiplicand is inf.
+    # Result is inf, with appropriate sign, when at least one multiplicand is inf.
     # c is either finite or same signed inf
     elif (a_inf or b_inf):
         fma_flag_result = ((a_sign ^ b_sign) << 15) | 0x7F80
-    # Result is inf, with appopriate sign, when addend is inf, multiplicands are finite
+    # Result is inf, with appropriate sign, when addend is inf, multiplicands are finite
     elif (c_inf):
         fma_flag_result = (c_sign << 15) | 0x7F80
     # Result is negative zero when product is -0 and addend is -0
@@ -366,7 +366,7 @@ if (__name__ == "__main__"):
 
     assert round_exact_to_bf16(0, 2 - Fraction(1, 512)) == 0x4000 # Rounds up causes to exceed significand range, see if shifted after rounding
     assert round_exact_to_bf16(0, 2 - Fraction(1, 256)) == 0x4000 # Tie rounds up, check after rounding
-    assert round_exact_to_bf16(0, 2 - Fraction(1, 128)) == 0x3FFF # No roundung, just max fraction
+    assert round_exact_to_bf16(0, 2 - Fraction(1, 128)) == 0x3FFF # No rounding, just max fraction
 
     max_float = Fraction(255,128) * Fraction(2)**127
     assert round_exact_to_bf16(0, max_float) == 0x7F7F                        # Max float

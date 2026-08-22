@@ -58,8 +58,8 @@ always_ff @(posedge clk) begin
     end
     else begin
         // Default low so operands_valid remains a one-cycle pulse
-        // in case in_val remains low at index 2
-        operands_valid <= 1'b0; 
+        // in case in_valid remains low at index 2
+        operands_valid <= 1'b0;
 
         if (in_valid) begin
             operands_valid <= (input_index == 2'd2);
