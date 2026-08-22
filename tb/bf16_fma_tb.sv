@@ -15,7 +15,9 @@ module bf16_fma_tb;
     logic        clk = 0;
     logic        rst_n;
 
+    logic        in_valid;
     logic [15:0] in_data;       // operand words in over the 16-bit pins
+
     logic [7:0]  out_data;      // result byte stream out
     logic        result_valid;  // high while a result byte is on out_data
 
@@ -23,6 +25,7 @@ module bf16_fma_tb;
     (
         .clk          (clk),
         .rst_n        (rst_n),
+        .in_valid     (in_valid),
         .in_data      (in_data),
         .out_data     (out_data),
         .result_valid (result_valid)
@@ -64,7 +67,7 @@ module bf16_fma_tb;
                         first_cycle = 1'b0;
                     end
 
-                    @(negedge clk); in_data = a;
+                    @(negedge clk); in_data = a; in_valid = 1'b1;
                     @(negedge clk); in_data = b;
                     @(negedge clk); in_data = c;
                 end

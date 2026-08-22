@@ -14,6 +14,7 @@ module bf16_fma_io_tb;
 
     logic        clk = 0;
     logic        rst_n;
+    logic        in_valid;
     logic [15:0] in_data;
     logic [15:0] a, b, c;
     logic        operands_valid;
@@ -29,6 +30,7 @@ module bf16_fma_io_tb;
     (
         .clk              (clk),
         .rst_n            (rst_n),
+        .in_valid         (in_valid),
         .in_data          (in_data),
         .a                (a),
         .b                (b),
@@ -59,7 +61,7 @@ module bf16_fma_io_tb;
         fma_result = 16'hABCD;
 
         // Load first operand triple
-        @(negedge clk); rst_n = 1; in_data = 16'h1111;
+        @(negedge clk); rst_n = 1; in_data = 16'h1111; in_valid = 1'b1;
         @(posedge clk);
         @(negedge clk); in_data = 16'h2222;
         @(posedge clk);

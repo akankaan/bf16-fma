@@ -18,7 +18,9 @@ module bf16_fma
     input  logic        clk,
     input  logic        rst_n,
 
+    input  logic        in_valid,
     input  logic [15:0] in_data,       // operand words in over the 16-bit pins
+
     output logic [7:0]  out_data,      // result byte stream out
     output logic        result_valid   // high while a result byte is on out_data
 );
@@ -33,6 +35,7 @@ module bf16_fma
     (
         .clk              (clk),
         .rst_n            (rst_n),
+        .in_valid         (in_valid),
         .in_data          (in_data),
         .a                (a),
         .b                (b),

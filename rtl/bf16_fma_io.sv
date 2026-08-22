@@ -19,6 +19,7 @@ module bf16_fma_io
     input  logic        rst_n,
 
     // For load 
+    input  logic        in_valid,         // high when input operand is valid
     input  logic [15:0] in_data,          // operand word from pins
     output logic [15:0] a, b, c,          // operand triples to fma unit
     output logic        operands_valid,   // goes high when load completes
@@ -34,6 +35,7 @@ module bf16_fma_io
     (
         .clk            (clk),
         .rst_n          (rst_n),
+        .in_valid       (in_valid),
         .in_data        (in_data),
         .a              (a),
         .b              (b),

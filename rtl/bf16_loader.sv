@@ -7,8 +7,8 @@
 //
 // Captures the three 16-bit operands one word per cycle from the
 // 16-bit input bus, and sets operands_valid high when operands are loaded.
-// It reloads next triple continuously, so the next operands stream in 
-// while the previous result is being sent out.
+// It accepts an operand whenever in_valid is high, and supports bubbles
+// between operand loads.
 //
 // ================================================================
 
@@ -21,6 +21,7 @@ module bf16_loader
     input  logic        rst_n,
 
     // 16-bit input word: operand a, then b, then c, on consecutive cycles
+    input  logic        in_valid,
     input  logic [15:0] in_data,
 
     // Assembled operands, and a pulse when all three are loaded and stable
@@ -37,28 +38,38 @@ always_ff @ (posedge clk) begin
     if (!rst_n) begin
         input_index <= '0;
     end
-    // Back to first input of next operation after last input of previous
-    else if (input_index == 2'd2) begin
-        input_index <= '0;
-    end
-    else begin
-        input_index <= input_index + 2'b1;
+    else if (in_valid) begin
+        // Back to first input of next operation after last input of previous
+        if (input_index == 2'd2) begin
+            input_index <= '0;
+        end
+        else begin
+            input_index <= input_index + 2'b1;
+        end
     end
 end
 
 always_ff @(posedge clk) begin
     if (!rst_n) begin
         operands_valid <= 1'b0;
+        a <= '0;
+        b <= '0;
+        c <= '0;
     end
     else begin
-        operands_valid <= (input_index == 2'd2);
+        // Default low so operands_valid remains a one-cycle pulse
+        // in case in_val remains low at index 2
+        operands_valid <= 1'b0; 
 
-        case (input_index)
-            2'd0: a <= in_data;
-            2'd1: b <= in_data;
-            2'd2: c <= in_data;
-            default: begin end
-        endcase
+        if (in_valid) begin
+            operands_valid <= (input_index == 2'd2);
+            case (input_index)
+                2'd0: a <= in_data;
+                2'd1: b <= in_data;
+                2'd2: c <= in_data;
+                default: begin end
+            endcase
+        end
     end
 
 end
