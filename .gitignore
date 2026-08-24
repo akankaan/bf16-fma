@@ -30,3 +30,4 @@ __pycache__/
 /fpga/quartus/*.jic
 /fpga/quartus/*.txt
 /fpga/quartus/*.json
+/fpga/quartus/*_assignment_defaults.qdf

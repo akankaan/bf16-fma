@@ -45,16 +45,8 @@ set_location_assignment PIN_E15 -to GPIO_1[24]
 set_location_assignment PIN_E16 -to GPIO_1[25]
 set_location_assignment PIN_F14 -to GPIO_1[26]
 set_location_assignment PIN_F15 -to GPIO_1[27]
-set_location_assignment PIN_F13 -to GPIO_1[28]
-set_location_assignment PIN_F12 -to GPIO_1[29]
-set_location_assignment PIN_G16 -to GPIO_1[30]
-set_location_assignment PIN_G15 -to GPIO_1[31]
-set_location_assignment PIN_G13 -to GPIO_1[32]
-set_location_assignment PIN_G12 -to GPIO_1[33]
-set_location_assignment PIN_J17 -to GPIO_1[34]
-set_location_assignment PIN_K16 -to GPIO_1[35]
 
-set_global_assignment -name VERILOG_FILE bf16_fma_fpga_top.v
+set_global_assignment -name SYSTEMVERILOG_FILE bf16_fma_fpga_top.sv
 set_global_assignment -name OPTIMIZATION_TECHNIQUE SPEED
 set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS ON
 set_global_assignment -name OPTIMIZE_HOLD_TIMING "ALL PATHS"
@@ -102,15 +94,8 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO_1[24]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO_1[25]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO_1[26]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO_1[27]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO_1[28]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO_1[29]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO_1[30]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO_1[31]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO_1[32]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO_1[33]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO_1[34]
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO_1[35]
 
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
 set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
 set_global_assignment -name SDC_FILE timing.sdc

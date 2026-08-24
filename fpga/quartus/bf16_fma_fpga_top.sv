@@ -10,7 +10,7 @@
 
 module bf16_fma_fpga_top (
 
-      inout [35:0] GPIO_1
+      inout [27:0] GPIO_1
 
 );
 
