@@ -15,3 +15,18 @@ __pycache__/
 
 # macOS
 .DS_Store
+
+#Quartus temporary and generated files
+/fpga/quartus/*.bak
+/fpga/quartus/*.qws
+/fpga/quartus/db/
+/fpga/quartus/incremental_db/
+/fpga/quartus/output_files/
+/fpga/quartus/*.rpt
+/fpga/quartus/*.summary
+/fpga/quartus/*.smsg
+/fpga/quartus/*.sof
+/fpga/quartus/*.pof
+/fpga/quartus/*.jic
+/fpga/quartus/*.txt
+/fpga/quartus/*.json
