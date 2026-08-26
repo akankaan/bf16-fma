@@ -2,6 +2,7 @@
 #include <gpiod.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 
 // Raspberry Pi BCM GPIO pin numbers
@@ -15,6 +16,7 @@
 #define FPGA_TO_PI_PIN_COUNT   9
 
 #define HALF_CLOCK_NS 10000L
+#define RESULT_TIMEOUT_CYCLES 32
 
 // Input data pins listed from bit 0 to bit 15
 static const unsigned int PIN_IN_DATA[16] = {
@@ -25,6 +27,22 @@ static const unsigned int PIN_IN_DATA[16] = {
 // Output data pins listed from bit 0 to bit 7
 static const unsigned int PIN_OUT_DATA[8] = {
     18, 19, 20, 21, 22, 23, 24, 25
+};
+
+struct fma_vector {
+    uint16_t a;
+    uint16_t b;
+    uint16_t c;
+    uint16_t expected;
+};
+
+struct output_monitor {
+    const struct fma_vector *vectors;
+    size_t   vector_count;
+    size_t   result_index;
+    size_t   errors;
+    uint16_t result;
+    int      bytes_received;
 };
 
 static struct gpiod_chip *gpio_chip;
@@ -43,6 +61,14 @@ static int clock_cycle(uint16_t in_data, int in_valid, int rst_n,
                        uint8_t *out_data, int *result_valid);
 
 static int reset_fma(void);
+static int send_transaction(uint16_t a, uint16_t b, uint16_t c,
+                            uint8_t out_data[3], int result_valid[3]);
+
+static int load_vectors(const char *path, struct fma_vector **vectors,
+                        size_t *vector_count);
+static int monitor_output(struct output_monitor *monitor, uint8_t out_data,
+                          int result_valid);
+static int run_vectors(const char *path);
 
 static int gpio_init(void)
 {
@@ -145,7 +171,7 @@ static int write_fpga_inputs(uint16_t in_data, int in_valid, int clk, int rst_n)
     return 0;
 }
 
-static int read_fpga_outputs(uint8_t *out_data, int *result_valid)
+static int read_fpga_outputs(uint8_t* out_data, int* result_valid)
 {
     int values[FPGA_TO_PI_PIN_COUNT];
     uint8_t result = 0;
@@ -219,4 +245,227 @@ static int reset_fma(void)
 
     // Release reset at negative clock edge
     return write_fpga_inputs(0, 0, 0, 1);
+}
+
+static int send_transaction(uint16_t a, uint16_t b, uint16_t c,
+                            uint8_t out_data[3], int result_valid[3])
+{
+    // Load first multiplicand
+    if (clock_cycle(a, 1, 1, &out_data[0], &result_valid[0]) < 0) {
+        return -1;
+    }
+
+    // Load second multiplicand
+    if (clock_cycle(b, 1, 1, &out_data[1], &result_valid[1]) < 0) {
+        return -1;
+    }
+
+    // Load addend
+    if (clock_cycle(c, 1, 1, &out_data[2], &result_valid[2]) < 0) {
+        return -1;
+    }
+
+    // Lower in_valid without generating another rising edge
+    return write_fpga_inputs(c, 0, 0, 1);
+}
+
+static int load_vectors(const char *path, struct fma_vector **vectors,
+                        size_t *vector_count)
+{
+    FILE *file = fopen(path, "r");
+    unsigned int a, b, c, expected;
+    size_t count = 0;
+
+    if (file == NULL) {
+        perror(path);
+        return -1;
+    }
+
+    // Vector count pass
+    while (fscanf(file, "%x %x %x %x", &a, &b, &c, &expected) == 4) {
+        count++;
+    }
+
+    if (count == 0) {
+        fprintf(stderr, "%s: no vectors found\n", path);
+        fclose(file);
+        return -1;
+    }
+
+    struct fma_vector *loaded_vectors;
+    loaded_vectors = malloc(count * sizeof(struct fma_vector));
+
+    if (loaded_vectors == NULL) {
+        perror("malloc");
+        fclose(file);
+        return -1;
+    }
+
+    // Second pass writes the inputs and expected results
+    rewind(file);
+
+    for (size_t i = 0; i < count; i++) {
+        if (fscanf(file, "%x %x %x %x", &a, &b, &c, &expected) != 4) {
+            fprintf(stderr, "%s: failed to read vector %zu\n", path, i);
+            free(loaded_vectors);
+            fclose(file);
+            return -1;
+        }
+
+        loaded_vectors[i].a = (uint16_t)a;
+        loaded_vectors[i].b = (uint16_t)b;
+        loaded_vectors[i].c = (uint16_t)c;
+        loaded_vectors[i].expected = (uint16_t)expected;
+    }
+
+    fclose(file);
+
+    *vectors      = loaded_vectors;
+    *vector_count = count;
+
+    return 0;
+}
+
+static int monitor_output(struct output_monitor *monitor, uint8_t out_data,
+                          int result_valid)
+{
+    if (!result_valid) {
+        return 0;
+    }
+
+    if (monitor->bytes_received == 0) {
+        monitor->result = out_data;
+        monitor->bytes_received = 1;
+        return 0;
+    }
+
+    monitor->result |= (uint16_t)out_data << 8;
+
+    const struct fma_vector *vector = &monitor->vectors[monitor->result_index];
+
+    if (monitor->result != vector->expected) {
+        fprintf(stderr,
+                "MISS a=%04x b=%04x c=%04x | got=%04x want=%04x\n",
+                (unsigned int)vector->a,
+                (unsigned int)vector->b,
+                (unsigned int)vector->c,
+                (unsigned int)monitor->result,
+                (unsigned int)vector->expected);
+        monitor->errors++;
+    }
+
+    monitor->result_index++;
+    monitor->bytes_received = 0;
+
+    return 0;
+}
+
+static int run_vectors(const char *path)
+{
+    struct fma_vector *vectors;
+    size_t vector_count;
+
+    if (load_vectors(path, &vectors, &vector_count) < 0) {
+        return -1;
+    }
+
+    if (reset_fma() < 0) {
+        free(vectors);
+        return -1;
+    }
+
+    struct output_monitor monitor = {
+        .vectors = vectors,
+        .vector_count = vector_count,
+        .result_index = 0,
+        .errors = 0,
+        .result = 0,
+        .bytes_received = 0
+    };
+
+    for (size_t i = 0; i < vector_count; i++) {
+        uint8_t out_data[3];
+        int result_valid[3];
+
+        if (send_transaction(vectors[i].a, vectors[i].b, vectors[i].c,
+                             out_data,     result_valid) < 0) {
+            free(vectors);
+            return -1;
+        }
+
+        for (int cycle = 0; cycle < 3; cycle++) {
+            if (monitor_output(&monitor, out_data[cycle],
+                               result_valid[cycle]) < 0) {
+                free(vectors);
+                return -1;
+            }
+        }
+    }
+
+    // Drain results
+    for (int cycle = 0; (cycle < RESULT_TIMEOUT_CYCLES) &&
+                        (monitor.result_index < vector_count);
+                         cycle++) {
+        uint8_t out_data;
+        int result_valid;
+
+        if (clock_cycle(0, 0, 1, &out_data, &result_valid) < 0) {
+            free(vectors);
+            return -1;
+        }
+
+        if (monitor_output(&monitor, out_data, result_valid) < 0) {
+            free(vectors);
+            return -1;
+        }
+    }
+
+    if (monitor.result_index < vector_count) {
+        size_t missing = vector_count - monitor.result_index;
+
+        fprintf(stderr, "Timed out waiting for %zu FMA result(s)\n", missing);
+        monitor.errors += missing;
+    }
+
+    printf("%s: %s -- %zu vectors, %zu errors\n",
+           path,
+           (monitor.errors == 0) ? "PASS" : "FAIL",
+           vector_count,
+           monitor.errors);
+
+    int status = (monitor.errors == 0) ? 0 : 1;
+    free(vectors);
+
+    return status;
+}
+
+int main(int argc, char **argv)
+{
+    if (argc < 2) {
+        return 1;
+    }
+
+    if (gpio_init() < 0) {
+        return 1;
+    }
+
+    int status = 0;
+
+    for (int i = 1; i < argc; i++) {
+        int result = run_vectors(argv[i]);
+
+        if (result != 0) {
+            status = 1;
+        }
+
+        if (result < 0) {
+            break;
+        }
+    }
+
+    // Leave the FMA in reset before releasing the GPIOs
+    write_fpga_inputs(0, 0, 0, 0);
+    gpio_cleanup();
+
+    return status;
 }
