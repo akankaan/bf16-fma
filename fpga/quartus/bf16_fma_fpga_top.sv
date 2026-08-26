@@ -7,16 +7,13 @@
 //
 // ================================================================
 
-
-module bf16_fma_fpga_top (
-
-      inout [27:0] GPIO_1
-
+module bf16_fma_fpga_top 
+(
+    inout [27:0] GPIO_1
 );
 
 	bf16_fma fma 
 	(
-	
     .clk          (GPIO_1[0]),
     .rst_n        (GPIO_1[1]),
     .in_valid     (GPIO_1[2]),
@@ -26,5 +23,3 @@ module bf16_fma_fpga_top (
 	);
 
 endmodule 
-
-

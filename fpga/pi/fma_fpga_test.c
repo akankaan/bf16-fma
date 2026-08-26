@@ -387,17 +387,25 @@ static int monitor_output(struct output_monitor *monitor, uint8_t out_data,
     monitor->result |= (uint16_t)out_data << 8;
 
     const struct fma_vector *vector = &monitor->vectors[monitor->result_index];
+    int passed = monitor->result == vector->expected;
 
-    if (monitor->result != vector->expected) {
-        fprintf(stderr,
-                "MISS a=%04x b=%04x c=%04x | got=%04x want=%04x\n",
-                (unsigned int)vector->a,
-                (unsigned int)vector->b,
-                (unsigned int)vector->c,
-                (unsigned int)monitor->result,
-                (unsigned int)vector->expected);
+    if (!passed) {
         monitor->errors++;
     }
+
+    // Clear terminal and print current result
+    printf("\033[2J\033[H");
+    printf("BF16 FMA FPGA Test\n\n");
+    printf("Progress: %zu / %zu\n", monitor->result_index + 1, monitor->vector_count);
+    printf("Errors:   %zu\n\n", monitor->errors);
+    printf("A:        %04x\n", (unsigned int)vector->a);
+    printf("B:        %04x\n", (unsigned int)vector->b);
+    printf("C:        %04x\n", (unsigned int)vector->c);
+    printf("Result:   %04x\n", (unsigned int)monitor->result);
+    printf("Expected: %04x\n", (unsigned int)vector->expected);
+    printf("Status:   %s%s\033[0m\n", passed ? "\033[32m" : "\033[31m",
+                                      passed ? "PASS" : "FAIL");
+    fflush(stdout);
 
     monitor->result_index++;
     monitor->bytes_received = 0;
