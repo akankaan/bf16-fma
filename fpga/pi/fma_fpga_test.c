@@ -11,7 +11,7 @@
 #define PIN_IN_VALID     27
 #define PIN_RESULT_VALID 26
 
-#define GPIO_CHIP_NAME        "gpiochip0"
+#define GPIO_CHIP_PATH        "/dev/gpiochip0"
 #define PI_TO_FPGA_PIN_COUNT  19
 #define FPGA_TO_PI_PIN_COUNT   9
 
@@ -46,13 +46,14 @@ struct output_monitor {
 };
 
 static struct gpiod_chip *gpio_chip;
-static struct gpiod_line_bulk pi_to_fpga_lines = GPIOD_LINE_BULK_INITIALIZER;
-static struct gpiod_line_bulk fpga_to_pi_lines = GPIOD_LINE_BULK_INITIALIZER;
-static int pi_to_fpga_requested;
-static int fpga_to_pi_requested;
+static struct gpiod_line_request *pi_to_fpga_request;
+static struct gpiod_line_request *fpga_to_pi_request;
 
 static int gpio_init(void);
 static void gpio_cleanup(void);
+static struct gpiod_line_request *request_gpio_lines(
+    const unsigned int *pins, size_t pin_count,
+    enum gpiod_line_direction direction);
 
 static int write_fpga_inputs(uint16_t in_data, int in_valid, int clk, int rst_n);
 static int read_fpga_outputs(uint8_t *out_data, int *result_valid);
@@ -70,14 +71,66 @@ static int monitor_output(struct output_monitor *monitor, uint8_t out_data,
                           int result_valid);
 static int run_vectors(const char *path);
 
+static struct gpiod_line_request *request_gpio_lines(
+    const unsigned int *pins, size_t pin_count,
+    enum gpiod_line_direction direction)
+{
+    struct gpiod_line_settings *settings = NULL;
+    struct gpiod_line_config *line_config = NULL;
+    struct gpiod_request_config *request_config = NULL;
+    struct gpiod_line_request *request = NULL;
+    int saved_errno;
+
+    settings = gpiod_line_settings_new();
+    line_config = gpiod_line_config_new();
+    request_config = gpiod_request_config_new();
+
+    if ((settings == NULL) || (line_config == NULL) ||
+        (request_config == NULL)) {
+        goto cleanup;
+    }
+
+    if (gpiod_line_settings_set_direction(settings, direction) < 0) {
+        goto cleanup;
+    }
+
+    if ((direction == GPIOD_LINE_DIRECTION_OUTPUT) &&
+        (gpiod_line_settings_set_output_value(
+             settings, GPIOD_LINE_VALUE_INACTIVE) < 0)) {
+        goto cleanup;
+    }
+
+    if (gpiod_line_config_add_line_settings(
+            line_config, pins, pin_count, settings) < 0) {
+        goto cleanup;
+    }
+
+    gpiod_request_config_set_consumer(request_config, "bf16-fma");
+    request = gpiod_chip_request_lines(
+        gpio_chip, request_config, line_config);
+
+cleanup:
+    saved_errno = errno;
+    if (request_config != NULL) {
+        gpiod_request_config_free(request_config);
+    }
+    if (line_config != NULL) {
+        gpiod_line_config_free(line_config);
+    }
+    if (settings != NULL) {
+        gpiod_line_settings_free(settings);
+    }
+    errno = saved_errno;
+
+    return request;
+}
+
 static int gpio_init(void)
 {
     unsigned int pi_to_fpga_pins[PI_TO_FPGA_PIN_COUNT] = {
         PIN_CLK, PIN_RST_N, PIN_IN_VALID
     };
     unsigned int fpga_to_pi_pins[FPGA_TO_PI_PIN_COUNT];
-    int initial_values[PI_TO_FPGA_PIN_COUNT] = {0};
-
     for (int i = 0; i < 16; i++) {
         pi_to_fpga_pins[i + 3] = PIN_IN_DATA[i];
     }
@@ -87,56 +140,43 @@ static int gpio_init(void)
     }
     fpga_to_pi_pins[8] = PIN_RESULT_VALID;
 
-    gpio_chip = gpiod_chip_open_by_name(GPIO_CHIP_NAME);
+    gpio_chip = gpiod_chip_open(GPIO_CHIP_PATH);
     if (gpio_chip == NULL) {
-        perror("gpiod_chip_open_by_name");
+        perror("gpiod_chip_open");
         return -1;
     }
 
-    if (gpiod_chip_get_lines(gpio_chip, pi_to_fpga_pins,
-                             PI_TO_FPGA_PIN_COUNT,
-                             &pi_to_fpga_lines) < 0) {
-        perror("gpiod_chip_get_lines for Pi outputs");
+    pi_to_fpga_request = request_gpio_lines(
+        pi_to_fpga_pins, PI_TO_FPGA_PIN_COUNT,
+        GPIOD_LINE_DIRECTION_OUTPUT);
+    if (pi_to_fpga_request == NULL) {
+        perror("request Pi output lines");
         gpio_cleanup();
         return -1;
     }
 
-    if (gpiod_line_request_bulk_output(&pi_to_fpga_lines, "bf16-fma",
-                                       initial_values) < 0) {
-        perror("gpiod_line_request_bulk_output");
+    fpga_to_pi_request = request_gpio_lines(
+        fpga_to_pi_pins, FPGA_TO_PI_PIN_COUNT,
+        GPIOD_LINE_DIRECTION_INPUT);
+    if (fpga_to_pi_request == NULL) {
+        perror("request Pi input lines");
         gpio_cleanup();
         return -1;
     }
-    pi_to_fpga_requested = 1;
-
-    if (gpiod_chip_get_lines(gpio_chip, fpga_to_pi_pins,
-                             FPGA_TO_PI_PIN_COUNT,
-                             &fpga_to_pi_lines) < 0) {
-        perror("gpiod_chip_get_lines for Pi inputs");
-        gpio_cleanup();
-        return -1;
-    }
-
-    if (gpiod_line_request_bulk_input(&fpga_to_pi_lines, "bf16-fma") < 0) {
-        perror("gpiod_line_request_bulk_input");
-        gpio_cleanup();
-        return -1;
-    }
-    fpga_to_pi_requested = 1;
 
     return 0;
 }
 
 static void gpio_cleanup(void)
 {
-    if (fpga_to_pi_requested) {
-        gpiod_line_release_bulk(&fpga_to_pi_lines);
-        fpga_to_pi_requested = 0;
+    if (fpga_to_pi_request != NULL) {
+        gpiod_line_request_release(fpga_to_pi_request);
+        fpga_to_pi_request = NULL;
     }
 
-    if (pi_to_fpga_requested) {
-        gpiod_line_release_bulk(&pi_to_fpga_lines);
-        pi_to_fpga_requested = 0;
+    if (pi_to_fpga_request != NULL) {
+        gpiod_line_request_release(pi_to_fpga_request);
+        pi_to_fpga_request = NULL;
     }
 
     if (gpio_chip != NULL) {
@@ -147,24 +187,27 @@ static void gpio_cleanup(void)
 
 static int write_fpga_inputs(uint16_t in_data, int in_valid, int clk, int rst_n)
 {
-    int values[PI_TO_FPGA_PIN_COUNT];
+    enum gpiod_line_value values[PI_TO_FPGA_PIN_COUNT];
 
-    if (!pi_to_fpga_requested) {
+    if (pi_to_fpga_request == NULL) {
         errno = ENODEV;
         perror("write_fpga_inputs");
         return -1;
     }
 
-    values[0] = clk;
-    values[1] = rst_n;
-    values[2] = in_valid;
+    values[0] = clk ? GPIOD_LINE_VALUE_ACTIVE : GPIOD_LINE_VALUE_INACTIVE;
+    values[1] = rst_n ? GPIOD_LINE_VALUE_ACTIVE : GPIOD_LINE_VALUE_INACTIVE;
+    values[2] = in_valid ? GPIOD_LINE_VALUE_ACTIVE
+                         : GPIOD_LINE_VALUE_INACTIVE;
 
     for (int i = 0; i < 16; i++) {
-        values[i + 3] = (in_data >> i) & 1u;
+        values[i + 3] = ((in_data >> i) & 1u)
+                            ? GPIOD_LINE_VALUE_ACTIVE
+                            : GPIOD_LINE_VALUE_INACTIVE;
     }
 
-    if (gpiod_line_set_value_bulk(&pi_to_fpga_lines, values) < 0) {
-        perror("gpiod_line_set_value_bulk");
+    if (gpiod_line_request_set_values(pi_to_fpga_request, values) < 0) {
+        perror("gpiod_line_request_set_values");
         return -1;
     }
 
@@ -173,7 +216,7 @@ static int write_fpga_inputs(uint16_t in_data, int in_valid, int clk, int rst_n)
 
 static int read_fpga_outputs(uint8_t* out_data, int* result_valid)
 {
-    int values[FPGA_TO_PI_PIN_COUNT];
+    enum gpiod_line_value values[FPGA_TO_PI_PIN_COUNT];
     uint8_t result = 0;
 
     if ((out_data == NULL) || (result_valid == NULL)) {
@@ -182,23 +225,25 @@ static int read_fpga_outputs(uint8_t* out_data, int* result_valid)
         return -1;
     }
 
-    if (!fpga_to_pi_requested) {
+    if (fpga_to_pi_request == NULL) {
         errno = ENODEV;
         perror("read_fpga_outputs");
         return -1;
     }
 
-    if (gpiod_line_get_value_bulk(&fpga_to_pi_lines, values) < 0) {
-        perror("gpiod_line_get_value_bulk");
+    if (gpiod_line_request_get_values(fpga_to_pi_request, values) < 0) {
+        perror("gpiod_line_request_get_values");
         return -1;
     }
 
     for (int i = 0; i < 8; i++) {
-        result |= (uint8_t)(values[i] << i);
+        if (values[i] == GPIOD_LINE_VALUE_ACTIVE) {
+            result |= (uint8_t)(1u << i);
+        }
     }
 
     *out_data = result;
-    *result_valid = values[8];
+    *result_valid = values[8] == GPIOD_LINE_VALUE_ACTIVE;
 
     return 0;
 }
