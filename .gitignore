@@ -38,3 +38,4 @@ __pycache__/
 /formal/**/*_prove/
 
 /formal/loader/bf16_loader
+/formal/outputter/bf16_outputter

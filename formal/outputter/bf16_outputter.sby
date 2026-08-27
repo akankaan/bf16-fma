@@ -1,0 +1,27 @@
+[tasks]
+bmc
+cover
+prove
+
+[options]
+bmc: mode bmc
+bmc: depth 10
+
+cover: mode cover
+cover: depth 10
+
+prove: mode prove
+prove: depth 10
+
+[engines]
+bmc:   smtbmc boolector
+cover: smtbmc boolector
+prove: abc pdr
+
+[script]
+read -formal -sv bf16_outputter.sv bf16_outputter_formal.sv
+prep -top bf16_outputter_formal
+
+[files]
+bf16_outputter.sv ../../rtl/bf16_outputter.sv
+bf16_outputter_formal.sv
