@@ -39,3 +39,4 @@ __pycache__/
 
 /formal/loader/bf16_loader
 /formal/outputter/bf16_outputter
+/formal/fma_io/bf16_fma_io

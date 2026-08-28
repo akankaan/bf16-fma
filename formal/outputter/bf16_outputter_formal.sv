@@ -1,3 +1,5 @@
+`default_nettype none
+
 module bf16_outputter_formal
 (
     input logic        clk,
