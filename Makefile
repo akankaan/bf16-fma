@@ -100,12 +100,12 @@ fma:
 vectors:
 	python3 scripts/generate_vectors.py
 
-TESTS = decode_classify multiplier aligner addsub normalizer rounder \
+SIM_TESTS = decode_classify multiplier aligner addsub normalizer rounder \
 	fma_core loader outputter fma_io fma
 
 test: lint
 	@status=0; \
-	for test in $(TESTS); do \
+	for test in $(SIM_TESTS); do \
 		if $(MAKE) $$test > sim/$$test.log 2>&1; then \
 			summary=$$(grep "TB: PASS" sim/$$test.log | tail -1); \
 			prefix=$${summary%%PASS*}; \
@@ -123,3 +123,14 @@ test: lint
 
 lint:
 	verilator --lint-only -Wall --top-module bf16_fma rtl/*.sv
+
+FORMAL_TESTS = loader outputter fma_io aligner
+
+formal:
+	@set -e; \
+	for unit in $(FORMAL_TESTS); do \
+		echo "Running formal $$unit"; \
+		(cd formal/$$unit && sby -f bf16_$$unit.sby); \
+	done
+
+.PHONY: lint test vectors formal

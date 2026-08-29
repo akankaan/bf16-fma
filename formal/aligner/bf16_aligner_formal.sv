@@ -61,6 +61,8 @@ module bf16_aligner_formal
         // c doesn't dominate and it's not zero
         else if (!c_zero) begin
             expected_aligned_product = {10'b0, product};
+            // I deemed formal for aligner worth it mainly b/c of the tree shifter
+            // strucuture optimization in implementation, so check with simple shift
             expected_aligned_addend  = reference_c_home >> reference_shift;
 
             for (int i = 0; i < 26; i++) begin

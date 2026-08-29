@@ -59,13 +59,14 @@ module bf16_outputter_formal
             assume(!rst_n); // assume reset in first cycle
         end
         else begin
-            assume(!(busy && start)); // cannot send start when busy
+            assume(!(expected_index == 2'b1 && start)); // cannot send start when high byte is sent out
 
             assert(out_byte == expected_out_byte);
             assert(busy     == expected_busy);
 
             cover(busy && (expected_index == 2'd0));
             cover(busy && (expected_index == 2'd1));
+            cover(busy && start);
         end
     end
 
