@@ -60,6 +60,18 @@ module bf16_fma
         .fma_result_valid (fma_result_valid)
     );
 
+    // Assertions
+    `ifndef SYNTHESIS
+
+    always @(posedge clk) begin
+        if (rst_n) begin
+            // outputter must not be busy when new computation result arrives
+            assert (!(fma_result_valid && result_valid)) 
+                else $fatal(1, "FMA ASSERT: result arrived while outputter was busy");
+        end
+    end
+
+    `endif
 endmodule
 
 `endif // _BF16_FMA_SV_

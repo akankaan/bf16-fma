@@ -343,6 +343,36 @@ module bf16_fma_core
             fma_result_valid <= normalizer_to_rounder_q.valid;
         end
     end
+
+    // Assertions
+    `ifndef SYNTHESIS
+
+    logic [5:0] valid_history; // shift register
+
+    always @(posedge clk) begin
+        if (!rst_n) begin
+            valid_history <= '0;
+        end
+        else begin
+            // Output latency
+            assert (fma_result_valid == valid_history[5]) // expecting 6 cycles late
+                else $fatal(1, "FMA CORE ASSERT: incorrect pipeline valid latency");
+
+            valid_history <= {valid_history[4:0], operands_valid};
+
+            // Multiplier output
+            if (decode_classify_to_multiplier_q.valid) begin
+                assert (product_zero == (product == 16'b0))
+                else $fatal(1, "MULTIPLIER ASSERT: inconsistent product_zero");
+
+                // Product should either be zero or have its unit or carry bit high
+                assert (product_zero || product[15] || product[14])
+                else $fatal(1, "MULTIPLIER ASSERT: product outside expected range");
+            end
+        end
+    end
+
+    `endif
     
 endmodule
 
