@@ -78,41 +78,41 @@ module bf16_aligner_formal
     always_comb begin
         // Constrain inputs w/assume to valid prior outputs, so the reference can use
         // |product for sticky instead of mirroring the RTL's !product_zero
-        assume(product_zero == (product == 16'b0));
-        assume(c_zero       == (c_exponent == 8'b0));
+        assume (product_zero == (product == 16'b0));
+        assume (c_zero       == (c_exponent == 8'b0));
         
-        assert(aligned_product  == expected_aligned_product);
-        assert(aligned_addend   == expected_aligned_addend);
-        assert(sticky           == expected_sticky);
-        assert(aligned_exponent == expected_aligned_exponent);
+        assert (aligned_product  == expected_aligned_product);
+        assert (aligned_addend   == expected_aligned_addend);
+        assert (sticky           == expected_sticky);
+        assert (aligned_exponent == expected_aligned_exponent);
 
         if (c_zero && !product_zero) begin
-            assert(aligned_addend == 26'b0);
-            assert(sticky         == 1'b0);
+            assert (aligned_addend == 26'b0);
+            assert (sticky         == 1'b0);
         end
 
         if (!c_zero && !product_zero && (reference_shift == 0)) begin
-            assert(aligned_addend == reference_c_home);
-            assert(sticky         == 1'b0);
+            assert (aligned_addend == reference_c_home);
+            assert (sticky         == 1'b0);
         end
 
         if (!c_zero && !product_zero && (reference_shift >= 26)) begin
-            assert(aligned_addend == 26'b0);
-            assert(sticky         == 1'b1);
+            assert (aligned_addend == 26'b0);
+            assert (sticky         == 1'b1);
         end
 
-        cover(!product_zero && !c_zero && reference_c_dominates);
-        cover(product_zero && c_zero);
-        cover((reference_shift < 0) && c_zero && !product_zero);
-        cover(!product_zero && !c_zero && (reference_shift == 0));
-        cover(!product_zero && !c_zero && (reference_shift == 19) &&
+        cover (!product_zero && !c_zero && reference_c_dominates);
+        cover (product_zero && c_zero);
+        cover ((reference_shift < 0) && c_zero && !product_zero);
+        cover (!product_zero && !c_zero && (reference_shift == 0));
+        cover (!product_zero && !c_zero && (reference_shift == 19) &&
                expected_sticky);
-        cover(!product_zero && !c_zero && (reference_shift == 19) &&
+        cover (!product_zero && !c_zero && (reference_shift == 19) &&
                !expected_sticky);
-        cover(!product_zero && !c_zero && (reference_shift == 25));
-        cover(!product_zero && !c_zero && (reference_shift == 31));
-        cover(!product_zero && !c_zero && (reference_shift == 32));
-        cover(!product_zero && !c_zero && (reference_shift == 132));
+        cover (!product_zero && !c_zero && (reference_shift == 25));
+        cover (!product_zero && !c_zero && (reference_shift == 31));
+        cover (!product_zero && !c_zero && (reference_shift == 32));
+        cover (!product_zero && !c_zero && (reference_shift == 132));
     end
 
 endmodule

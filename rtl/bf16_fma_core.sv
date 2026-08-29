@@ -369,6 +369,62 @@ module bf16_fma_core
                 assert (product_zero || product[15] || product[14])
                 else $fatal(1, "MULTIPLIER ASSERT: product outside expected range");
             end
+            
+            // Aligner and addsub prepare output
+            if (multiplier_to_aligner_q.valid) begin
+                // Product doesn't move up from its frame. Either it stays in 
+                // frame or c_dominates, making it effectively zero
+                assert (aligned_product[25:16] == 10'b0)
+                else $fatal(1, "ALIGNER ASSERT: product moved from its frame");
+
+                assert (aligned_addend_greater == (aligned_addend > aligned_product))
+                else $fatal(1, "ADDSUB PREPARE ASSERT: incorrect addeng greater comparison");
+
+                if (subtract_correction) begin
+                    assert (effective_subtraction)
+                        else $fatal(1, "ADDSUB PREPARE ASSERT: correction without subtraction");
+
+                    assert (sticky)
+                        else $fatal(1, "ADDSUB PREPARE ASSERT: correction without sticky");
+
+                    assert (aligned_addend != aligned_product)
+                        else $fatal(1, "ADDSUB PREPARE ASSERT: correction subtraction from zero");
+                end
+            end
+
+            // Addsub outputs
+            if (addsub_prepare_to_addsub_q.valid) begin
+                if (addsub_prepare_to_addsub_q.effective_subtraction && 
+                   (addsub_prepare_to_addsub_q.aligned_addend == 
+                    addsub_prepare_to_addsub_q.aligned_product)) begin
+                    assert (sum == 27'b0)
+                    else $fatal(1, "ADDSUB ASSERT: exact cancellation is nonzero");
+                end
+
+                if (addsub_prepare_to_addsub_q.effective_subtraction) begin
+                    assert (!sum[26])
+                    else $fatal(1, "ADDSUB ASSERT: subtraction resulted in carry");
+                end
+            end
+
+            // Normalizer outputs
+            if (addsub_to_normalizer_q.valid) begin
+                assert (is_zero || norm_significand[7])
+                else $fatal(1, "NORMALIZER ASSERT: result is not normalized");
+            end
+
+            // Rounder outputs
+            if (normalizer_to_rounder_q.valid) begin
+
+                assert (rounded_result[15] == normalizer_to_rounder_q.norm_sign)
+                else $fatal(1, "ROUNDER ASSERT: sign changed during roundung");
+
+                // no subnormal result, fraction should be flushed to zero if exp zero
+                 assert ((rounded_result[14:7] != 8'h00) ||
+                         (rounded_result[6:0] == 7'b0))
+                else $fatal(1, "ROUNDER ASSERT: produced subnormal result");
+            end
+
         end
     end
 

@@ -69,15 +69,15 @@ module bf16_loader_formal
     always_ff @(posedge clk) begin
         past_valid <= 1'b1;
         if (!past_valid) begin
-            assume(!rst_n); // assume reset in first cycle
+            assume (!rst_n); // assume reset in first cycle
         end
         else begin
-            assert(a              == expected_a);
-            assert(b              == expected_b);
-            assert(c              == expected_c);
-            assert(operands_valid == expected_valid);
+            assert (a              == expected_a);
+            assert (b              == expected_b);
+            assert (c              == expected_c);
+            assert (operands_valid == expected_valid);
 
-            cover(operands_valid);
+            cover (operands_valid);
         end
     end
 

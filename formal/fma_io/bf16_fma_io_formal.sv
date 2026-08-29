@@ -103,22 +103,22 @@ module bf16_fma_io_formal
     always_ff @(posedge clk) begin
         past_valid <= 1'b1;
         if (!past_valid) begin
-            assume(!rst_n); // assume reset in first cycle
+            assume (!rst_n); // assume reset in first cycle
         end
         else begin
             // cannot send start when the latched result's high byte is being sent out
-            assume(!(fma_result_valid && (expected_index_outputter == 2'd1)));
+            assume (!(fma_result_valid && (expected_index_outputter == 2'd1)));
 
-            assert(out_data       == expected_out_byte);
-            assert(result_valid   == expected_busy);
-            assert(a              == expected_a);
-            assert(b              == expected_b);
-            assert(c              == expected_c);
-            assert(operands_valid == expected_valid);
+            assert (out_data       == expected_out_byte);
+            assert (result_valid   == expected_busy);
+            assert (a              == expected_a);
+            assert (b              == expected_b);
+            assert (c              == expected_c);
+            assert (operands_valid == expected_valid);
 
-            cover(operands_valid);
-            cover(result_valid && (expected_index_outputter == 2'd0));
-            cover(result_valid && (expected_index_outputter == 2'd1));
+            cover (operands_valid);
+            cover (result_valid && (expected_index_outputter == 2'd0));
+            cover (result_valid && (expected_index_outputter == 2'd1));
         end
     end
 
