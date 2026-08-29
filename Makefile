@@ -98,7 +98,7 @@ fma:
 	vvp sim/fma_tb
 
 vectors:
-	python3 scripts/generate_vectors.py
+	python3 scripts/generate_vectors.py --seed 1
 
 SIM_TESTS = decode_classify multiplier aligner addsub normalizer rounder \
 	fma_core loader outputter fma_io fma

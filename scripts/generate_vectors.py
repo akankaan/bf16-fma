@@ -4,6 +4,7 @@
 # Date  : July 24, 2026
 
 import random
+import argparse
 
 from vector_generation import addsub_vectors
 from vector_generation import aligner_vectors
@@ -22,13 +23,20 @@ NORMALIZER_RANDOM_COUNT      = 100000
 ROUNDER_RANDOM_COUNT         = 100000
 
 def main():
-    fma_rng             = random.Random(fma_vectors.SEED)
-    decode_classify_rng = random.Random(decode_classify_vectors.SEED)
-    multiplier_rng      = random.Random(multiplier_vectors.SEED)
-    aligner_rng         = random.Random(aligner_vectors.SEED)
-    addsub_rng          = random.Random(addsub_vectors.SEED)
-    normalizer_rng      = random.Random(normalizer_vectors.SEED)
-    rounder_rng         = random.Random(rounder_vectors.SEED)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", type=int, default=1)
+    args = parser.parse_args()
+
+    seed = args.seed
+    print(f"Vector generation seed: {seed}")
+
+    fma_rng             = random.Random(seed)
+    decode_classify_rng = random.Random(seed)
+    multiplier_rng      = random.Random(seed)
+    aligner_rng         = random.Random(seed)
+    addsub_rng          = random.Random(seed)
+    normalizer_rng      = random.Random(seed)
+    rounder_rng         = random.Random(seed)
 
     fma_vectors.write_vector_results_fma("tb/vectors/vec_random_fma.txt",
                                          fma_vectors.fma_random_vectors(fma_rng, FMA_RANDOM_COUNT))
