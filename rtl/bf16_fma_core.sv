@@ -369,7 +369,7 @@ module bf16_fma_core
                 assert (product_zero || product[15] || product[14])
                 else $fatal(1, "MULTIPLIER ASSERT: product outside expected range");
             end
-            
+
             // Aligner and addsub prepare output
             if (multiplier_to_aligner_q.valid) begin
                 // Product doesn't move up from its frame. Either it stays in 
@@ -378,7 +378,7 @@ module bf16_fma_core
                 else $fatal(1, "ALIGNER ASSERT: product moved from its frame");
 
                 assert (aligned_addend_greater == (aligned_addend > aligned_product))
-                else $fatal(1, "ADDSUB PREPARE ASSERT: incorrect addeng greater comparison");
+                else $fatal(1, "ADDSUB PREPARE ASSERT: incorrect addend greater comparison");
 
                 if (subtract_correction) begin
                     assert (effective_subtraction)
@@ -417,7 +417,7 @@ module bf16_fma_core
             if (normalizer_to_rounder_q.valid) begin
 
                 assert (rounded_result[15] == normalizer_to_rounder_q.norm_sign)
-                else $fatal(1, "ROUNDER ASSERT: sign changed during roundung");
+                else $fatal(1, "ROUNDER ASSERT: sign changed during rounding");
 
                 // no subnormal result, fraction should be flushed to zero if exp zero
                  assert ((rounded_result[14:7] != 8'h00) ||
