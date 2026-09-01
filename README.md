@@ -11,12 +11,15 @@ This project implements a pipelined Bfloat16 Fused Multiply-Add unit. It calcula
 - Round-to-nearest, ties-to-even (RNE) rounding
 - Implemented in SystemVerilog
 - Verified through simulation and formal verification
+- Verified with 250M+ random vectors across 150 seeded simulation runs
+- Passed all 100,000 random vectors during FPGA hardware testing
 - Emulated on an FPGA and hardened in SKY130 and submitted through Tiny Tapeout
 
 ## Architecture
 
 ### Arithmetic Datapath
-<!--[Main block diagram]-->
+
+<img src="docs/bf16_fma_architecture_drawing.jpg" alt="Six-stage Bfloat16 FMA arithmetic datapath" width="240" align="right">
 
 My implementation has six internal pipeline stages to reduce the critical path delay. This was especially useful for the FPGA emulation and the tapeout because their limited I/O requires three clock cycles to load each set of operands. Without pipelining, the clock period would be limited by the delay of the entire arithmetic datapath, meaning that each of these three load cycles would also use the longer clock period. These pipeline stages are:
 
@@ -27,9 +30,17 @@ My implementation has six internal pipeline stages to reduce the critical path d
 5) Normalize: Find leading one, shift result to the top of the datapath and adjust its exponent
 6) Round: Round the normalized result to Bfloat16 using round-to-nearest, ties-to-even (RNE), and output the final encoded value
 
+<br clear="right">
+
 The main arithmetic unit is the `fma_core`, and it can also be used as the top instantiated module without the I/O wrapper. Pipeline diagrams and the throughput calculations for both the standalone core and the I/O wrapped unit are below:
 
-<--! draw pipeline diagrams for both core itself and I/O wrapped, calculate throughput for both cases -->
+<br clear="right">
+
+<p align="center">
+  <img src="docs/fma_core_pipeline_diagram_drawing.jpg" width="600" alt="Core and I/O wrapped unit pipeline diagram">
+</p>
+
+As calculated above, the I/O-wrapped unit takes approximately three times (2.9930×) as long as the standalone core to complete 1000 transactions. This is expected since the wrapper accepts one transaction every three cycles in steady state, compared to one transaction per cycle for the standalone core.
 
 ## Numerical Behavior Decisions
 
@@ -37,8 +48,8 @@ The main arithmetic unit is the `fma_core`, and it can also be used as the top i
 - Addend is directly added to intermediate product without rounding
 - The addend input is Bfloat16 rather than FP32
 - Chosen rounding mode is RNE
-- Subnormal inputs are considered zero (DAZ) and subnormal outputs are flushed to zero (FTZ)
-<!-- !! TODO: No flags etc and other deviations from IEEE 754 !!-->
+- Subnormal inputs are considered zero (DAZ) and subnormal results are returned as signed zero (FTZ)
+- RNE is the only rounding mode, no exception flags are produced, and all NaNs are returned as a quiet NaN `0x7FC0`
 
 ## Interface and Timing
 
@@ -48,13 +59,11 @@ The arithmetic core takes in `operands_valid` and outputs `fma_result_valid` six
 
 The top level with the I/O wrapper on the other hand has an `in_valid` input for each one of the three 16-bit input cycles. The `loader` raises `operands_valid` high when all three operands are presented and starts the transaction. Once the core finishes the computation, the result is registered and outputted over two 8-bit output cycles in which `result_valid` is high.
 
-<!--! timing diagram for input output loading!!-->
-
 ## Tapeout
 
 ### Timing-Driven RTL Development
-[Explain how reports led to pipeline boundaries, addsub preparation,
-hierarchical alignment shifter, etc.]
+
+After each boundary insertion and optimization, I extracted the top ten critical paths from each pipeline stage. I compared the critical path delays across stages and inserted pipeline boundaries to evenly separate the delays as much as possible. One optimization was in the aligner where the synthesis tools did not infer a tree shifter and writing this tree structure explicitly moved the critical path outside the aligner. After boundary insertions, addsub delay was unbalanced relative to the rest of the pipeline. As a result, I separated addsub to two distinct modules and moved the preparatory module to the aligner stage. This resulted in a fairly optimized and balanced pipeline structure.
 
 ### Physical Results
 
@@ -73,33 +82,33 @@ The design was hardened for the SKY130 using LibreLane and OpenROAD in a 2x2 Tin
 | Tiny Tapeout space | 2x2 tile |
 | Clock Frequency | 133.33 MHz (7.5 ns) |
 | Core area | 72,564.6 µm² |
-| Standard-cell area | 42,946.2 µm² |
-| Standard-cell utilization | 59.18% |
-| Standard and sequential cells | 5,650 and 399 |
-| Nominal-corner setup slack | +2.819 ns |
-| Worst-corner setup slack | +0.089 ns |
-| Worst hold slack | +0.106 ns |
-| Estimated nominal power | 13.48 mW |
+| Standard-cell area | 42,335.6 µm² |
+| Standard-cell utilization | 58.34% |
+| Standard and sequential cells | 5,606 and 399 |
+| Nominal-corner setup slack | +3.182 ns |
+| Worst-corner setup slack | +0.647 ns |
+| Worst hold slack | +0.104 ns |
+| Estimated nominal power | 12.58 mW |
 | DRC, LVS, and antenna violations | 0 |
 
 The worst setup corner was the slow process corner at 100 °C and 1.60 V. The tapeout physical design configuration and layout are available in the [`tt_um_bf16_fma`](https://github.com/akankaan/tt_um_bf16_fma) repository.
 
-### Post-Route Stage Delays
+### Post-Route Stage Timing
 
-The following table illustrates the critical path across each pipeline stage:
+The following table shows the critical timing path through each pipeline stage at the slow setup corner:
 
-| Stage | Delay | Setup slack |
+| Stage | Total delay | Setup slack |
 | --- | ---: | ---: |
-| Decode and classify | 2.22 ns | +3.48 ns |
-| Multiply | 5.53 ns | +0.09 ns |
-| Align and prepare addition | 5.36 ns | +0.20 ns |
-| Add/subtract | 4.67 ns | +1.07 ns |
-| Normalize | 5.40 ns | +0.22 ns |
-| Round and select result | 3.68 ns | +1.85 ns |
+| Decode and classify | 3.43 ns | +4.07 ns |
+| Multiply | 6.85 ns | +0.65 ns |
+| Align and prepare addition | 6.75 ns | +0.75 ns |
+| Add/subtract | 6.06 ns | +1.44 ns |
+| Normalize | 6.46 ns | +1.04 ns |
+| Round and select result | 5.09 ns | +2.41 ns |
 
-The multiplier is the critical stage with the alignment and normalization fairly balanced and not far behind. The input-to-loader path was 1.31 ns, while the longest path through the outputter was 2.58 ns.
+The multiplier is the critical stage with the alignment and normalization fairly balanced and not far behind.
 
-The annotated layout below shows how the area breakdown of main RTL modules. The loader, outputter, and pipeline registers are grouped under I/O and pipeline.
+The annotated layout below shows the area breakdown of the main RTL modules. The loader, outputter, and pipeline registers are grouped under I/O and pipeline.
 
 ![Module area breakdown](docs/bf16_fma_module_breakdown.png)
 
@@ -119,8 +128,6 @@ The annotated layout below shows how the area breakdown of main RTL modules. The
 I wanted to also learn more about formal verification and used SymbiYosys for this purpose. I did formal for the loader, outputter, and combined FMA I/O. Although these modules accept many possible operand and result values, their control behavior depends only on a small internal counter. Keeping the data symbolic allows every value to be checked without exhaustively checking each individually.
 
 I also verified that the aligner's hierarchical shifter produces the same outputs as a simpler behavioral reference.
-
-!! TODO: RTL assertion mention !!
 
 ### Hardware Testing on FPGA
 
