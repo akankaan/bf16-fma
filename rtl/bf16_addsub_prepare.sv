@@ -46,9 +46,9 @@ module bf16_addsub_prepare
         else if (aligned_addend < aligned_product) begin
             result_sign = product_sign;
         end
-        // Exact cancellation; ordering unimportant
+        // Exact cancellation
         else begin
-            result_sign = c_sign && product_sign;
+            result_sign = 1'b0;
         end
     end
 
